@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import type { DateLocalizer } from 'react-big-calendar';
+import type { DateRangeFormatFunction } from 'react-big-calendar';
 import { format, parse, startOfWeek, endOfWeek, getDay, isSameDay, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { api } from '../lib/api';
@@ -16,16 +16,19 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
+const formatTimeRange: DateRangeFormatFunction = ({ start, end }, culture, loc) => {
+  const startLabel = loc ? loc.format(start, 'HH:mm', culture) : format(start, 'HH:mm');
+  const endLabel = loc ? loc.format(end, 'HH:mm', culture) : format(end, 'HH:mm');
+  return `${startLabel} - ${endLabel}`;
+};
+
 const calendarFormats = {
   dateFormat: 'd',
   timeGutterFormat: 'HH:mm',
-  eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }, culture: string | undefined, loc: DateLocalizer) =>
-    `${loc.format(start, 'HH:mm', culture)} - ${loc.format(end, 'HH:mm', culture)}`,
+  eventTimeRangeFormat: formatTimeRange,
   agendaTimeFormat: 'HH:mm',
-  agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }, culture: string | undefined, loc: DateLocalizer) =>
-    `${loc.format(start, 'HH:mm', culture)} - ${loc.format(end, 'HH:mm', culture)}`,
-  selectRangeFormat: ({ start, end }: { start: Date; end: Date }, culture: string | undefined, loc: DateLocalizer) =>
-    `${loc.format(start, 'HH:mm', culture)} - ${loc.format(end, 'HH:mm', culture)}`,
+  agendaTimeRangeFormat: formatTimeRange,
+  selectRangeFormat: formatTimeRange,
 };
 const midnight = new Date();
 midnight.setHours(0, 0, 0, 0);
