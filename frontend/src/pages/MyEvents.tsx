@@ -4,6 +4,7 @@ import type { DateRangeFormatFunction } from 'react-big-calendar';
 import { format, parse, startOfWeek, endOfWeek, getDay, isSameDay, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { api } from '../lib/api';
+import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Event } from '../types';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -53,29 +54,30 @@ const CustomEvent = ({ event }: { event: CalendarEvent }) => {
 
 const eventPropGetter = () => {
   return {
-    style: {
-      backgroundColor: '#EEF2FF',
-      color: '#4F46E5',
-      border: 'none',
-      borderRadius: '6px',
-      padding: '2px 4px',
-      display: 'block',
-    },
+    className: 'bg-indigo-50 text-indigo-600 border-0 rounded-md p-0.5 block',
   };
 };
 
 export function MyEvents() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [view, setView] = useState<CalendarView>('month');
   const [date, setDate] = useState(new Date());
   const navigate = useNavigate();
 
   useEffect(() => {
+    const ac = new AbortController();
     void api
-      .get<Event[]>('/users/me/events')
+      .get<Event[]>('/users/me/events', { signal: ac.signal })
       .then((r) => setEvents(r.data))
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
+          setError(extractErrorMessage(err, 'Failed to load your events'));
+        }
+      })
       .finally(() => setLoading(false));
+    return () => ac.abort();
   }, []);
 
   const calendarEvents: CalendarEvent[] = events.map((e) => {
@@ -140,7 +142,7 @@ export function MyEvents() {
 
   const dayPropGetter = (cellDate: Date) => {
     if (cellDate.getMonth() !== date.getMonth() || cellDate.getFullYear() !== date.getFullYear()) {
-      return { style: { backgroundColor: '#f4f4f4' } };
+      return { className: 'bg-gray-100' };
     }
     return {};
   };
@@ -149,12 +151,16 @@ export function MyEvents() {
     return <div className="text-center py-12">Loading...</div>;
   }
 
-  const formattedDate = view === 'month' 
-    ? format(date, 'MMMM yyyy') 
-    : format(startOfWeek(date), 'MMM d') + ' - ' + format(endOfWeek(date), 'MMM d, yyyy');
+  const formattedDate =
+    view === 'month'
+      ? format(date, 'MMMM yyyy')
+      : format(startOfWeek(date), 'MMM d') + ' - ' + format(endOfWeek(date), 'MMM d, yyyy');
 
   return (
     <div>
+      {error && (
+        <div className="mb-6 bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>
+      )}
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Events</h1>
@@ -189,7 +195,19 @@ export function MyEvents() {
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600"
                 aria-label="Previous"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
               </button>
               <h2 className="text-lg font-semibold text-gray-900 min-w-[140px] text-center">
                 {formattedDate}
@@ -199,15 +217,29 @@ export function MyEvents() {
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600"
                 aria-label="Next"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
               </button>
             </div>
-            
+
             <div className="flex gap-2">
               <button
                 onClick={() => handleViewChange('month')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm ${
-                  view === 'month' ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  view === 'month'
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 Month
@@ -215,7 +247,9 @@ export function MyEvents() {
               <button
                 onClick={() => handleViewChange('week')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm ${
-                  view === 'week' ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  view === 'week'
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 Week
@@ -251,8 +285,13 @@ export function MyEvents() {
                             onClick={() => handleSelectEvent(ev)}
                             className="bg-indigo-50 rounded-lg p-2 text-indigo-700 cursor-pointer hover:bg-indigo-100 transition-colors"
                           >
-                            <div className="text-xs font-semibold mb-1">{format(ev.start, 'HH:mm')}</div>
-                            <div className="text-sm font-medium leading-tight truncate" title={ev.title}>
+                            <div className="text-xs font-semibold mb-1">
+                              {format(ev.start, 'HH:mm')}
+                            </div>
+                            <div
+                              className="text-sm font-medium leading-tight truncate"
+                              title={ev.title}
+                            >
                               {ev.title}
                             </div>
                           </div>

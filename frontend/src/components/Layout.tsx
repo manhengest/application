@@ -18,13 +18,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             <div />
             <div className="flex items-center gap-6">
-              <Link to="/events" className="flex items-center text-gray-700 hover:text-gray-900 font-medium">
+              <Link
+                to="/events"
+                className="flex items-center text-gray-700 hover:text-gray-900 font-medium"
+              >
                 <List className="w-5 h-5 mr-2" />
                 Events
               </Link>
               {user ? (
                 <>
-                  <Link to="/my-events" className="flex items-center text-gray-700 hover:text-gray-900 font-medium">
+                  <Link
+                    to="/my-events"
+                    className="flex items-center text-gray-700 hover:text-gray-900 font-medium"
+                  >
                     <Calendar className="w-5 h-5 mr-2" />
                     My Events
                   </Link>
@@ -34,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     + Create Event
                   </Link>
-                  
+
                   <div className="w-px h-8 bg-gray-200" />
 
                   <div className="flex items-center gap-3">
@@ -56,7 +62,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link to="/login" className="text-gray-700 hover:text-gray-900 font-medium">
                     Login
                   </Link>
-                  <Link to="/register" className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium">
+                  <Link
+                    to="/register"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium"
+                  >
                     Sign up
                   </Link>
                 </>

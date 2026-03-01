@@ -11,7 +11,10 @@ import { Participant } from './entities/participant.entity';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        url: config.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/event_management'),
+        url: config.get(
+          'DATABASE_URL',
+          'postgresql://postgres:postgres@localhost:5432/event_management',
+        ),
         entities: [User, Event, Participant],
         synchronize: config.get('NODE_ENV') !== 'production',
       }),

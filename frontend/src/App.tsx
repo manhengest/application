@@ -12,25 +12,41 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Outlet /></Layout>}>
+        <Route
+          path="/"
+          element={
+            <Layout>
+              <Outlet />
+            </Layout>
+          }
+        >
           <Route index element={<Navigate to="/events" replace />} />
           <Route path="events" element={<EventsList />} />
-          <Route path="events/create" element={
-            <ProtectedRoute>
-              <EventForm />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="events/create"
+            element={
+              <ProtectedRoute>
+                <EventForm />
+              </ProtectedRoute>
+            }
+          />
           <Route path="events/:id" element={<EventDetails />} />
-          <Route path="events/:id/edit" element={
-            <ProtectedRoute>
-              <EventForm />
-            </ProtectedRoute>
-          } />
-          <Route path="my-events" element={
-            <ProtectedRoute>
-              <MyEvents />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="events/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EventForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="my-events"
+            element={
+              <ProtectedRoute>
+                <MyEvents />
+              </ProtectedRoute>
+            }
+          />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
         </Route>

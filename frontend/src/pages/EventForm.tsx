@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { toLocalDatetimeInput, extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
+import {
+  toLocalDatetimeInput,
+  extractErrorMessage,
+  isCancelError,
+  type AppError,
+} from '../lib/utils';
 import type { Event } from '../types';
 
 const tomorrow = () => {
@@ -87,7 +92,10 @@ export function EventForm() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <Link to={isEdit ? `/events/${id}` : '/events'} className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1">
+      <Link
+        to={isEdit ? `/events/${id}` : '/events'}
+        className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1"
+      >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>

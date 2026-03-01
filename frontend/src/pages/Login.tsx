@@ -21,7 +21,10 @@ export function Login() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post<{ user: { id: string; name: string; email: string }; token: string }>('/auth/login', {
+      const { data } = await api.post<{
+        user: { id: string; name: string; email: string };
+        token: string;
+      }>('/auth/login', {
         email,
         password,
       });
@@ -70,7 +73,10 @@ export function Login() {
         </button>
       </form>
       <p className="mt-4 text-sm text-gray-600">
-        Don&apos;t have an account? <Link to="/register" className="text-indigo-600 hover:underline">Sign up</Link>
+        Don&apos;t have an account?{' '}
+        <Link to="/register" className="text-indigo-600 hover:underline">
+          Sign up
+        </Link>
       </p>
     </div>
   );

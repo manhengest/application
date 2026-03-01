@@ -8,8 +8,14 @@ import {
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { EventsService } from './events.service';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+  ApiBody,
+} from '@nestjs/swagger';
+import { EventsService, EventResponse } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -25,7 +31,7 @@ export class EventsController {
   @Get()
   @ApiOperation({ summary: 'List events (public only when unauthenticated)' })
   @ApiResponse({ status: 200, description: 'List of events' })
-  list(@CurrentUser() user: User | null) {
+  list(@CurrentUser() user: User | null): Promise<EventResponse[]> {
     return this.events.findAll(user);
   }
 
@@ -38,7 +44,7 @@ export class EventsController {
   get(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User | null,
-  ) {
+  ): Promise<EventResponse> {
     return this.events.findOne(id, user);
   }
 
@@ -49,7 +55,7 @@ export class EventsController {
   @ApiResponse({ status: 201, description: 'Event created' })
   @ApiResponse({ status: 400, description: 'Validation failed or invalid date' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() dto: CreateEventDto, @CurrentUser() user: User) {
+  create(@Body() dto: CreateEventDto, @CurrentUser() user: User): Promise<EventResponse> {
     return this.events.create(dto, user);
   }
 
@@ -66,7 +72,7 @@ export class EventsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEventDto,
     @CurrentUser() user: User,
-  ) {
+  ): Promise<EventResponse> {
     return this.events.update(id, dto, user);
   }
 
@@ -77,7 +83,10 @@ export class EventsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Only organizer can delete' })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<{ success: true }> {
     return this.events.remove(id, user);
   }
 
@@ -89,7 +98,7 @@ export class EventsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Private event - access denied' })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  join(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  join(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<EventResponse> {
     return this.events.join(id, user);
   }
 
@@ -100,7 +109,7 @@ export class EventsController {
   @ApiResponse({ status: 400, description: 'Not a participant' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  leave(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  leave(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<EventResponse> {
     return this.events.leave(id, user);
   }
 }

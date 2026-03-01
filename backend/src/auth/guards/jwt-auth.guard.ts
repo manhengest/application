@@ -44,25 +44,4 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
     return super.canActivate(context) as Promise<boolean>;
   }
-
-  handleRequest<TUser>(
-    err: Error | null,
-    user: TUser | null,
-    _info: Error | { message?: string } | string | undefined,
-    context: ExecutionContext,
-  ): TUser | null {
-    if (this.isOptionalAuthContext(context)) {
-      return user;
-    }
-
-    if (err) {
-      throw err;
-    }
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid or missing token');
-    }
-
-    return user;
-  }
 }

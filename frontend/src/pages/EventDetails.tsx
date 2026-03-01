@@ -92,7 +92,10 @@ export function EventDetails() {
 
   return (
     <div className="w-full">
-      <Link to={backTo} className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1">
+      <Link
+        to={backTo}
+        className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1"
+      >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -100,9 +103,7 @@ export function EventDetails() {
       </Link>
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         {error && (
-          <div className="mb-4 bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">
-            {error}
-          </div>
+          <div className="mb-4 bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>
         )}
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
         <p className="text-gray-600 mb-6">{event.description}</p>
@@ -115,8 +116,7 @@ export function EventDetails() {
             <span className="font-medium">Location:</span> {event.location}
           </p>
           <p>
-            <span className="font-medium">Capacity:</span>{' '}
-            {event.capacity ?? 'Unlimited'}
+            <span className="font-medium">Capacity:</span> {event.capacity ?? 'Unlimited'}
           </p>
           <p>
             <span className="font-medium">Participants:</span> {event.participantCount}

@@ -7,7 +7,9 @@ import { Participant } from './entities/participant.entity';
 async function seed() {
   const ds = new DataSource({
     type: 'postgres',
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/event_management',
+    url:
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:postgres@localhost:5432/event_management',
     entities: [User, Event, Participant],
     synchronize: true,
   });

@@ -94,7 +94,11 @@ describe('AuthService', () => {
         email: mockUser.email,
       });
       expect(result.user).not.toHaveProperty('passwordHash');
-      expect(result.user).toMatchObject({ id: 'user-1', name: 'Test User', email: 'test@example.com' });
+      expect(result.user).toMatchObject({
+        id: 'user-1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
       expect(result.token).toBe('jwt-token');
     });
   });
@@ -134,7 +138,11 @@ describe('AuthService', () => {
 
       expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashed');
       expect(result.user).not.toHaveProperty('passwordHash');
-      expect(result.user).toMatchObject({ id: 'user-1', name: 'Test User', email: 'test@example.com' });
+      expect(result.user).toMatchObject({
+        id: 'user-1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
       expect(result.token).toBe('jwt-token');
     });
   });

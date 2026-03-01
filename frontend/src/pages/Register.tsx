@@ -18,10 +18,10 @@ export function Register() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post<{ user: { id: string; name: string; email: string }; token: string }>(
-        '/auth/register',
-        { name, email, password }
-      );
+      const { data } = await api.post<{
+        user: { id: string; name: string; email: string };
+        token: string;
+      }>('/auth/register', { name, email, password });
       setAuth(data.user, data.token);
       void navigate('/events', { replace: true });
     } catch (err) {
@@ -78,7 +78,10 @@ export function Register() {
         </button>
       </form>
       <p className="mt-4 text-sm text-gray-600">
-        Already have an account? <Link to="/login" className="text-indigo-600 hover:underline">Log in</Link>
+        Already have an account?{' '}
+        <Link to="/login" className="text-indigo-600 hover:underline">
+          Log in
+        </Link>
       </p>
     </div>
   );

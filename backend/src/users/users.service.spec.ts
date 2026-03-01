@@ -59,10 +59,7 @@ describe('UsersService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        { provide: getRepositoryToken(Event), useValue: mockEventRepo },
-      ],
+      providers: [UsersService, { provide: getRepositoryToken(Event), useValue: mockEventRepo }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -104,9 +101,7 @@ describe('UsersService', () => {
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('event-a');
       expect(result[1].id).toBe('event-late');
-      expect(new Date(result[0].date).getTime()).toBeLessThan(
-        new Date(result[1].date).getTime(),
-      );
+      expect(new Date(result[0].date).getTime()).toBeLessThan(new Date(result[1].date).getTime());
     });
 
     it('should set isOrganizer true when user is organizer, false otherwise', async () => {

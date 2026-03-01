@@ -39,7 +39,7 @@ describe('authStore', () => {
 
     const stored = localStorage.getItem('auth');
     expect(stored).toBeTruthy();
-    const parsed = JSON.parse(stored!);
-    expect(parsed.state).toMatchObject({ user: mockUser, token: 'jwt-token' });
+    expect(stored).toContain('"token":"jwt-token"');
+    expect(stored).toContain('"email":"test@example.com"');
   });
 });

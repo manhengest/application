@@ -12,6 +12,24 @@ import { Participant } from '../database/entities/participant.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
+export interface EventResponse {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  location: string;
+  capacity: number | null;
+  visibility: 'public' | 'private';
+  organizerId: string;
+  organizer: { id: string; name: string; email: string } | null;
+  participantCount: number;
+  participants: { id: string; name: string; initials: string }[];
+  isJoined: boolean;
+  isFull: boolean;
+  isOrganizer: boolean;
+  isExpired: boolean;
+}
+
 @Injectable()
 export class EventsService {
   constructor(
@@ -21,7 +39,7 @@ export class EventsService {
     private participantRepo: Repository<Participant>,
   ) {}
 
-  async findAll(user: User | null) {
+  async findAll(user: User | null): Promise<EventResponse[]> {
     const qb = this.eventRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.organizer', 'organizer')
@@ -29,7 +47,19 @@ export class EventsService {
       .leftJoinAndSelect('p.user', 'pu');
 
     if (!user) {
-      qb.andWhere('e.visibility = :vis', { vis: 'public' });
+      qb.andWhere('e.visibility = :publicVisibility', {
+        publicVisibility: 'public',
+      });
+    } else {
+      qb.andWhere(
+        `(e.visibility = :publicVisibility
+          OR e.organizer_id = :userId
+          OR EXISTS (
+            SELECT 1 FROM participants p2
+            WHERE p2.event_id = e.id AND p2.user_id = :userId
+          ))`,
+        { publicVisibility: 'public', userId: user.id },
+      );
     }
 
     qb.orderBy('e.date', 'ASC');
@@ -37,7 +67,7 @@ export class EventsService {
     return events.map((e) => this.toEventResponse(e, user?.id));
   }
 
-  async findOne(id: string, user: User | null) {
+  async findOne(id: string, user: User | null): Promise<EventResponse> {
     const event = await this.eventRepo.findOne({
       where: { id },
       relations: ['organizer', 'participants', 'participants.user'],
@@ -50,7 +80,9 @@ export class EventsService {
         throw new ForbiddenException('Private event - authentication required');
       }
       const isOrganizer = event.organizerId === user.id;
-      const isParticipant = event.participants?.some((p) => p.userId === user.id);
+      const isParticipant = event.participants?.some(
+        (p) => p.userId === user.id,
+      );
       if (!isOrganizer && !isParticipant) {
         throw new ForbiddenException('Private event - access denied');
       }
@@ -58,7 +90,7 @@ export class EventsService {
     return this.toEventResponse(event, user?.id);
   }
 
-  async create(dto: CreateEventDto, organizer: User) {
+  async create(dto: CreateEventDto, organizer: User): Promise<EventResponse> {
     const date = new Date(dto.date);
     if (date < this.tomorrowStart()) {
       throw new BadRequestException('Event date must be tomorrow or later');
@@ -72,7 +104,11 @@ export class EventsService {
     return this.findOne(event.id, organizer);
   }
 
-  async update(id: string, dto: UpdateEventDto, user: User) {
+  async update(
+    id: string,
+    dto: UpdateEventDto,
+    user: User,
+  ): Promise<EventResponse> {
     const event = await this.eventRepo.findOne({
       where: { id },
       relations: ['participants'],
@@ -107,7 +143,7 @@ export class EventsService {
     return this.findOne(event.id, user);
   }
 
-  async remove(id: string, user: User) {
+  async remove(id: string, user: User): Promise<{ success: true }> {
     const event = await this.eventRepo.findOne({ where: { id } });
     if (!event) {
       throw new NotFoundException('Event not found');
@@ -119,7 +155,7 @@ export class EventsService {
     return { success: true };
   }
 
-  async join(eventId: string, user: User) {
+  async join(eventId: string, user: User): Promise<EventResponse> {
     return this.eventRepo.manager.transaction(async (tx) => {
       // Fetch event without relations when using FOR UPDATE - PostgreSQL disallows
       // FOR UPDATE with LEFT JOIN (nullable side of outer join)
@@ -156,15 +192,21 @@ export class EventsService {
     });
   }
 
-  async leave(eventId: string, user: User) {
-    const p = await this.participantRepo.findOne({
-      where: { userId: user.id, eventId },
+  async leave(eventId: string, user: User): Promise<EventResponse> {
+    return this.eventRepo.manager.transaction(async (tx) => {
+      await tx.getRepository(Event).findOne({
+        where: { id: eventId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const p = await tx.getRepository(Participant).findOne({
+        where: { userId: user.id, eventId },
+      });
+      if (!p) {
+        throw new BadRequestException('Not a participant');
+      }
+      await tx.getRepository(Participant).remove(p);
+      return this.findOne(eventId, user);
     });
-    if (!p) {
-      throw new BadRequestException('Not a participant');
-    }
-    await this.participantRepo.remove(p);
-    return this.findOne(eventId, user);
   }
 
   private tomorrowStart(): Date {
@@ -174,14 +216,13 @@ export class EventsService {
     return t;
   }
 
-  private toEventResponse(event: Event, userId?: string) {
+  private toEventResponse(event: Event, userId?: string): EventResponse {
     const participants = event.participants ?? [];
     const participantCount = participants.length;
     const isJoined = userId
       ? participants.some((p) => p.userId === userId)
       : false;
-    const isFull =
-      event.capacity != null && participantCount >= event.capacity;
+    const isFull = event.capacity != null && participantCount >= event.capacity;
     const isOrganizer = event.organizerId === userId;
     const isExpired = new Date(event.date) < new Date();
 
@@ -194,23 +235,19 @@ export class EventsService {
       capacity: event.capacity,
       visibility: event.visibility,
       organizerId: event.organizerId,
-      organizer: event.organizer
-        ? {
-            id: event.organizer.id,
-            name: event.organizer.name,
-            email: event.organizer.email,
-          }
-        : null,
+      organizer: {
+        id: event.organizer.id,
+        name: event.organizer.name,
+        email: event.organizer.email,
+      },
       participantCount,
-      participants: participants.map((p) =>
-        p.user
-          ? {
-              id: p.user.id,
-              name: p.user.name,
-              initials: this.getInitials(p.user.name),
-            }
-          : null,
-      ).filter(Boolean),
+      participants: participants.map((p) => {
+        return {
+          id: p.user.id,
+          name: p.user.name,
+          initials: this.getInitials(p.user.name),
+        };
+      }),
       isJoined,
       isFull,
       isOrganizer,

@@ -24,5 +24,5 @@ api.interceptors.response.use(
       useAuthStore.getState().logout();
     }
     return Promise.reject(err);
-  }
+  },
 );

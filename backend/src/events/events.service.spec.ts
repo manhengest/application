@@ -50,13 +50,23 @@ describe('EventsService', () => {
         getMany: jest.fn().mockResolvedValue([]),
       })),
       manager: {
-        transaction: jest.fn((fn) => fn({
-          getRepository: jest.fn((Entity: unknown) =>
-            Entity === Event
-              ? { findOne: jest.fn().mockResolvedValue(mockEvent), create: jest.fn(), save: jest.fn() }
-              : { findOne: jest.fn().mockResolvedValue(null), create: jest.fn().mockReturnValue({}), save: jest.fn() }
-          ),
-        })),
+        transaction: jest.fn((fn) =>
+          fn({
+            getRepository: jest.fn((Entity: unknown) =>
+              Entity === Event
+                ? {
+                    findOne: jest.fn().mockResolvedValue(mockEvent),
+                    create: jest.fn(),
+                    save: jest.fn(),
+                  }
+                : {
+                    findOne: jest.fn().mockResolvedValue(null),
+                    create: jest.fn().mockReturnValue({}),
+                    save: jest.fn(),
+                  },
+            ),
+          }),
+        ),
       },
     };
 
@@ -96,12 +106,12 @@ describe('EventsService', () => {
 
       await service.findAll(null);
 
-      expect(qb.andWhere).toHaveBeenCalledWith('e.visibility = :vis', {
-        vis: 'public',
+      expect(qb.andWhere).toHaveBeenCalledWith('e.visibility = :publicVisibility', {
+        publicVisibility: 'public',
       });
     });
 
-    it('should return all events when user is authenticated', async () => {
+    it('should return public events and organizer/participant events when user is authenticated', async () => {
       const qb = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
@@ -112,7 +122,10 @@ describe('EventsService', () => {
 
       const result = await service.findAll(mockUser);
 
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('e.visibility = :publicVisibility'),
+        { publicVisibility: 'public', userId: mockUser.id },
+      );
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({ id: 'event-1', title: 'Test Event' });
     });
@@ -122,18 +135,14 @@ describe('EventsService', () => {
     it('should throw 404 when event not found', async () => {
       (eventRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent', mockUser)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException for private event when no user', async () => {
       const privateEvent = { ...mockEvent, visibility: 'private' as const };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(privateEvent);
 
-      await expect(service.findOne('event-1', null)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.findOne('event-1', null)).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException for private event when user is neither organizer nor participant', async () => {
@@ -145,9 +154,7 @@ describe('EventsService', () => {
       };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(privateEvent);
 
-      await expect(service.findOne('event-1', otherUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.findOne('event-1', otherUser)).rejects.toThrow(ForbiddenException);
     });
 
     it('should return private event when user is organizer', async () => {
@@ -243,9 +250,9 @@ describe('EventsService', () => {
       const otherUser = { ...mockUser, id: 'user-2' };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(mockEvent);
 
-      await expect(
-        service.update('event-1', { title: 'New' }, otherUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.update('event-1', { title: 'New' }, otherUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should reject capacity less than current participants', async () => {
@@ -265,9 +272,9 @@ describe('EventsService', () => {
         getMany: jest.fn().mockResolvedValue([eventWithParticipants]),
       });
 
-      await expect(
-        service.update('event-1', { capacity: 1 }, mockUser),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.update('event-1', { capacity: 1 }, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject past date in dto', async () => {
@@ -286,9 +293,7 @@ describe('EventsService', () => {
       const otherUser = { ...mockUser, id: 'user-2' };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(mockEvent);
 
-      await expect(service.remove('event-1', otherUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.remove('event-1', otherUser)).rejects.toThrow(ForbiddenException);
     });
 
     it('should delete event when organizer', async () => {
@@ -333,9 +338,7 @@ describe('EventsService', () => {
     it('should throw NotFoundException when event not found', async () => {
       txEventRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.join('event-1', mockUser)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.join('event-1', mockUser)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException for private event when user is not organizer', async () => {
@@ -343,9 +346,7 @@ describe('EventsService', () => {
       const privateEvent = { ...mockEvent, visibility: 'private' as const };
       txEventRepo.findOne.mockResolvedValue(privateEvent);
 
-      await expect(service.join('event-1', otherUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.join('event-1', otherUser)).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException when already joined', async () => {
@@ -355,9 +356,7 @@ describe('EventsService', () => {
         eventId: 'event-1',
       });
 
-      await expect(service.join('event-1', mockUser)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.join('event-1', mockUser)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when event is full', async () => {
@@ -365,25 +364,35 @@ describe('EventsService', () => {
       txParticipantRepo.findOne.mockResolvedValue(null);
       txParticipantRepo.count.mockResolvedValue(2);
 
+      await expect(service.join('event-1', mockUser)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when organizer tries to join own event', async () => {
+      txEventRepo.findOne.mockResolvedValue(mockEvent);
+      txParticipantRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.join('event-1', mockUser)).rejects.toThrow(BadRequestException);
       await expect(service.join('event-1', mockUser)).rejects.toThrow(
-        BadRequestException,
+        'Organizer cannot join their own event',
       );
     });
 
     it('should save participant and return event on success', async () => {
-      txEventRepo.findOne.mockResolvedValue(mockEvent);
+      const otherUser = { ...mockUser, id: 'user-2' };
+      const eventByOther = { ...mockEvent, organizerId: 'user-1' };
+      txEventRepo.findOne.mockResolvedValue(eventByOther);
       txParticipantRepo.findOne.mockResolvedValue(null);
       txParticipantRepo.count.mockResolvedValue(0);
       (eventRepo.findOne as jest.Mock).mockResolvedValue({
-        ...mockEvent,
+        ...eventByOther,
         participantCount: 1,
-        participants: [{ userId: mockUser.id, user: mockUser }],
+        participants: [{ userId: otherUser.id, user: otherUser }],
       });
 
-      const result = await service.join('event-1', mockUser);
+      const result = await service.join('event-1', otherUser);
 
       expect(txParticipantRepo.create).toHaveBeenCalledWith({
-        userId: mockUser.id,
+        userId: otherUser.id,
         eventId: 'event-1',
       });
       expect(txParticipantRepo.save).toHaveBeenCalled();
@@ -392,12 +401,30 @@ describe('EventsService', () => {
   });
 
   describe('leave', () => {
-    it('should throw BadRequestException when not a participant', async () => {
-      (participantRepo.findOne as jest.Mock).mockResolvedValue(null);
+    let txEventRepo: { findOne: jest.Mock };
+    let txParticipantRepo: { findOne: jest.Mock; remove: jest.Mock };
 
-      await expect(service.leave('event-1', mockUser)).rejects.toThrow(
-        BadRequestException,
+    beforeEach(() => {
+      txEventRepo = { findOne: jest.fn().mockResolvedValue(mockEvent) };
+      txParticipantRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        remove: jest.fn().mockResolvedValue(undefined),
+      };
+      (eventRepo.manager.transaction as jest.Mock).mockImplementation(
+        async (fn: (tx: { getRepository: (e: unknown) => unknown }) => unknown) => {
+          const tx = {
+            getRepository: (Entity: unknown) =>
+              Entity === Event ? txEventRepo : txParticipantRepo,
+          };
+          return fn(tx);
+        },
       );
+    });
+
+    it('should throw BadRequestException when not a participant', async () => {
+      txParticipantRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.leave('event-1', mockUser)).rejects.toThrow(BadRequestException);
     });
 
     it('should remove participant and return event on success', async () => {
@@ -405,8 +432,7 @@ describe('EventsService', () => {
         userId: mockUser.id,
         eventId: 'event-1',
       };
-      (participantRepo.findOne as jest.Mock).mockResolvedValue(participant);
-      (participantRepo.remove as jest.Mock).mockResolvedValue(undefined);
+      txParticipantRepo.findOne.mockResolvedValue(participant);
       (eventRepo.findOne as jest.Mock).mockResolvedValue({
         ...mockEvent,
         participants: [],
@@ -414,7 +440,7 @@ describe('EventsService', () => {
 
       const result = await service.leave('event-1', mockUser);
 
-      expect(participantRepo.remove).toHaveBeenCalledWith(participant);
+      expect(txParticipantRepo.remove).toHaveBeenCalledWith(participant);
       expect(result).toMatchObject({ id: 'event-1' });
     });
   });
