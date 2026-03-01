@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
+import { extractErrorMessage, type AppError } from '../lib/utils';
+import type { LocationState } from '../types';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +13,8 @@ export function Login() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/events';
+  const state = (location.state ?? {}) as LocationState;
+  const from = (typeof state.from === 'string' ? state.from : state.from?.pathname) ?? '/events';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,10 +26,9 @@ export function Login() {
         password,
       });
       setAuth(data.user, data.token);
-      navigate(from, { replace: true });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg || 'Invalid credentials');
+      void navigate(from, { replace: true });
+    } catch (err) {
+      setError(extractErrorMessage(err as AppError, 'Invalid credentials'));
     } finally {
       setLoading(false);
     }
@@ -68,7 +70,7 @@ export function Login() {
         </button>
       </form>
       <p className="mt-4 text-sm text-gray-600">
-        Don't have an account? <Link to="/register" className="text-indigo-600 hover:underline">Sign up</Link>
+        Don&apos;t have an account? <Link to="/register" className="text-indigo-600 hover:underline">Sign up</Link>
       </p>
     </div>
   );

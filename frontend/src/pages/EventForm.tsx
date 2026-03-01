@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { toLocalDatetimeInput, extractErrorMessage } from '../lib/utils';
+import { toLocalDatetimeInput, extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import type { Event } from '../types';
 
 const tomorrow = () => {
@@ -31,7 +31,7 @@ export function EventForm() {
     if (!isEdit || !id) return;
     const ac = new AbortController();
     setFetchLoading(true);
-    api
+    void api
       .get<Event>(`/events/${id}`, { signal: ac.signal })
       .then((r) => {
         const e = r.data;
@@ -44,8 +44,8 @@ export function EventForm() {
         setCapacity(e.capacity != null ? String(e.capacity) : '');
         setVisibility(e.visibility);
       })
-      .catch((err) => {
-        if (err.name !== 'CanceledError') {
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
           setError(extractErrorMessage(err, 'Failed to load event'));
         }
       })
@@ -69,13 +69,13 @@ export function EventForm() {
     try {
       if (isEdit) {
         const { data } = await api.patch<Event>(`/events/${id}`, payload);
-        navigate(`/events/${data.id}`);
+        void navigate(`/events/${data.id}`);
       } else {
         const { data } = await api.post<Event>('/events', payload);
-        navigate(`/events/${data.id}`);
+        void navigate(`/events/${data.id}`);
       }
-    } catch (err: unknown) {
-      setError(extractErrorMessage(err, 'Failed to save event'));
+    } catch (err) {
+      setError(extractErrorMessage(err as AppError, 'Failed to save event'));
     } finally {
       setLoading(false);
     }
@@ -218,7 +218,7 @@ export function EventForm() {
           <div className="flex gap-4 pt-6">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => void navigate(-1)}
               className="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
             >
               Cancel

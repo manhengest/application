@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
+import { extractErrorMessage, type AppError } from '../lib/utils';
 
 export function Register() {
   const [name, setName] = useState('');
@@ -22,10 +23,9 @@ export function Register() {
         { name, email, password }
       );
       setAuth(data.user, data.token);
-      navigate('/events', { replace: true });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg || 'Registration failed');
+      void navigate('/events', { replace: true });
+    } catch (err) {
+      setError(extractErrorMessage(err as AppError, 'Registration failed'));
     } finally {
       setLoading(false);
     }

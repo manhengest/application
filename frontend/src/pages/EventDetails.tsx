@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
-import { extractErrorMessage } from '../lib/utils';
-import type { Event } from '../types';
+import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
+import type { Event, LocationState } from '../types';
 import { format } from 'date-fns';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -16,17 +16,17 @@ export function EventDetails() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const location = useLocation();
-  const fromState = (location.state as { from?: unknown } | null)?.from;
+  const { from: fromState } = (location.state ?? {}) as LocationState;
   const backTo = typeof fromState === 'string' ? fromState : '/events';
 
   useEffect(() => {
     if (!id) return;
     const ac = new AbortController();
-    api
+    void api
       .get<Event>(`/events/${id}`, { signal: ac.signal })
       .then((r) => setEvent(r.data))
-      .catch((err) => {
-        if (err.name !== 'CanceledError') {
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
           setEvent(null);
           setError(extractErrorMessage(err, 'Failed to load event'));
         }
@@ -37,7 +37,7 @@ export function EventDetails() {
 
   const handleJoin = async () => {
     if (!user) {
-      navigate('/login');
+      void navigate('/login');
       return;
     }
     setError('');
@@ -45,7 +45,7 @@ export function EventDetails() {
       const { data } = await api.post<Event>(`/events/${id}/join`);
       setEvent(data);
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to join event'));
+      setError(extractErrorMessage(err as AppError, 'Failed to join event'));
     }
   };
 
@@ -55,7 +55,7 @@ export function EventDetails() {
       const { data } = await api.post<Event>(`/events/${id}/leave`);
       setEvent(data);
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to leave event'));
+      setError(extractErrorMessage(err as AppError, 'Failed to leave event'));
     }
   };
 
@@ -63,9 +63,9 @@ export function EventDetails() {
     setError('');
     try {
       await api.delete(`/events/${id}`);
-      navigate('/events');
+      void navigate('/events');
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to delete event'));
+      setError(extractErrorMessage(err as AppError, 'Failed to delete event'));
     } finally {
       setDeleteModal(false);
     }
@@ -175,7 +175,7 @@ export function EventDetails() {
               ) : null
             ) : !event.isFull ? (
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => void navigate('/login')}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
               >
                 Join Event
@@ -187,7 +187,7 @@ export function EventDetails() {
         open={deleteModal}
         title="Delete event"
         message="Are you sure you want to delete this event?"
-        onConfirm={handleDelete}
+        onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteModal(false)}
       />
     </div>

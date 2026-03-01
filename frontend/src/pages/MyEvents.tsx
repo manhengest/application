@@ -72,7 +72,7 @@ export function MyEvents() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api
+    void api
       .get<Event[]>('/users/me/events')
       .then((r) => setEvents(r.data))
       .finally(() => setLoading(false));
@@ -135,7 +135,7 @@ export function MyEvents() {
   };
 
   const handleSelectEvent = (ev: CalendarEvent) => {
-    navigate(`/events/${ev.resource.eventId}`, { state: { from: '/my-events' } });
+    void navigate(`/events/${ev.resource.eventId}`, { state: { from: '/my-events' } });
   };
 
   const dayPropGetter = (cellDate: Date) => {

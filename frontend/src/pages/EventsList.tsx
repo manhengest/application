@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
-import { extractErrorMessage } from '../lib/utils';
+import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import type { Event } from '../types';
 import { format } from 'date-fns';
 
@@ -18,11 +18,11 @@ export function EventsList() {
 
   useEffect(() => {
     const ac = new AbortController();
-    api
+    void api
       .get<Event[]>('/events', { signal: ac.signal })
       .then((r) => setEvents(r.data))
-      .catch((err) => {
-        if (err.name !== 'CanceledError') {
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
           setError(extractErrorMessage(err, 'Failed to load events'));
         }
       })
@@ -55,7 +55,7 @@ export function EventsList() {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
-      navigate('/login');
+      void navigate('/login');
       return;
     }
     if (pendingEventIds.includes(eventId)) {
@@ -73,7 +73,7 @@ export function EventsList() {
       await api.post<Event>(`/events/${eventId}/join`);
     } catch (err) {
       setEvents((prev) => prev.map((ev) => (ev.id === eventId ? previousEvent : ev)));
-      setActionError(extractErrorMessage(err, 'Failed to join event'));
+      setActionError(extractErrorMessage(err as AppError, 'Failed to join event'));
     } finally {
       setPendingEventIds((prev) => prev.filter((id) => id !== eventId));
     }
@@ -97,7 +97,7 @@ export function EventsList() {
       await api.post<Event>(`/events/${eventId}/leave`);
     } catch (err) {
       setEvents((prev) => prev.map((ev) => (ev.id === eventId ? previousEvent : ev)));
-      setActionError(extractErrorMessage(err, 'Failed to leave event'));
+      setActionError(extractErrorMessage(err as AppError, 'Failed to leave event'));
     } finally {
       setPendingEventIds((prev) => prev.filter((id) => id !== eventId));
     }
@@ -203,7 +203,7 @@ export function EventsList() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      navigate('/login');
+                      void navigate('/login');
                     }}
                     className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
                   >

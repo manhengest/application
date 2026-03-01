@@ -10,8 +10,17 @@ import { OPTIONAL_AUTH_KEY } from '../decorators/optional-auth.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
+  constructor(private readonly reflector: Reflector) {
     super();
+  }
+
+  private isOptionalAuthContext(context: ExecutionContext): boolean {
+    return (
+      this.reflector.getAllAndOverride<boolean>(OPTIONAL_AUTH_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? false
+    );
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -36,22 +45,24 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context) as Promise<boolean>;
   }
 
-  handleRequest<TUser = unknown>(
-    err: unknown,
-    user: TUser,
-    _info: unknown,
+  handleRequest<TUser>(
+    err: Error | null,
+    user: TUser | null,
+    _info: Error | { message?: string } | string | undefined,
     context: ExecutionContext,
-  ): TUser {
-    const optionalAuth = this.reflector.getAllAndOverride<boolean>(OPTIONAL_AUTH_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (optionalAuth) {
-      return (user ?? null) as TUser;
+  ): TUser | null {
+    if (this.isOptionalAuthContext(context)) {
+      return user;
     }
-    if (err || !user) {
-      throw err || new UnauthorizedException('Invalid or missing token');
+
+    if (err) {
+      throw err;
     }
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid or missing token');
+    }
+
     return user;
   }
 }

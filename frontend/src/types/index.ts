@@ -1,3 +1,7 @@
+export interface LocationState {
+  from?: string | { pathname: string };
+}
+
 export interface User {
   id: string;
   name: string;

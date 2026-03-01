@@ -1,7 +1,8 @@
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const rawUrl = import.meta.env.VITE_API_URL as string | undefined;
+const baseURL: string = rawUrl || 'http://localhost:3000';
 
 export const api = axios.create({
   baseURL,
@@ -18,7 +19,7 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
+  (err: AxiosError) => {
     if (err.response?.status === 401) {
       useAuthStore.getState().logout();
     }
