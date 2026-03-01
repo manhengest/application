@@ -24,6 +24,20 @@ docker-compose up --build
 - **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:3000
 - **Swagger API docs:** http://localhost:3000/api
+- **pgAdmin:** http://localhost:5050
+
+### pgAdmin (Database UI)
+
+pgAdmin is included for browsing and querying the PostgreSQL database. After starting the stack:
+
+1. Open http://localhost:5050
+2. Log in with default credentials: `admin@admin.com` / `admin` (or set `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` in `.env`)
+3. Add a new server connection:
+   - **Host:** `db`
+   - **Port:** `5432`
+   - **Username:** `postgres`
+   - **Password:** `postgres`
+   - **Database:** `event_management`
 
 ### Local Development
 
@@ -64,6 +78,13 @@ docker-compose up --build
 |----------------|--------------------------------|----------------------------------|
 | VITE_API_URL   | Backend API base URL           | http://localhost:3000            |
 
+### Docker Compose (root `.env`)
+
+| Variable        | Description                    | Default                          |
+|-----------------|--------------------------------|----------------------------------|
+| PGADMIN_EMAIL   | pgAdmin login email            | admin@admin.com                  |
+| PGADMIN_PASSWORD| pgAdmin login password         | admin                            |
+
 ## Project Structure
 
 ```
@@ -90,6 +111,4 @@ docker-compose up --build
 
 ## Version Control
 
-- Branch: `develop` for implementation
-- PR into `master` when done
-- Minimum 3 commits
+- Main branch: `master`

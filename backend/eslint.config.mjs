@@ -5,12 +5,12 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  {
-    ignores: ['eslint.config.mjs'],
-  },
+  { ignores: ['dist', 'node_modules', 'coverage', 'eslint.config.mjs'] },
+
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   eslintPluginPrettierRecommended,
+
   {
     languageOptions: {
       globals: {
@@ -23,13 +23,24 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      // TypeScript strict hygiene (aligned with project "avoid any" rule)
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', fixStyle: 'inline-type-imports' }],
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/require-await': 'warn',
+
+      // General quality
+      'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
+      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+
+      // Prettier
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 );

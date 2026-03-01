@@ -34,3 +34,6 @@ pgdata/
 # Testing
 coverage/
 .nyc_output/
+
+# AI
+.cursor/
