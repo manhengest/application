@@ -6,3 +6,25 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* react-big-calendar month view overrides */
+.rbc-month-view {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rbc-month-view .rbc-header {
+  background-color: #f2f2f2;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border: none;
+}
+.rbc-header + .rbc-header {
+  border: none !important;
+}
+.rbc-month-view .rbc-day-bg {
+  background-color: #ffffff;
+}
+.rbc-month-view .rbc-off-range .rbc-date-cell,
+.rbc-month-view .rbc-date-cell.rbc-off-range {
+  visibility: hidden;
+}

@@ -8,7 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -45,6 +45,7 @@ export class EventsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create event (auth required)' })
+  @ApiBody({ type: CreateEventDto })
   @ApiResponse({ status: 201, description: 'Event created' })
   @ApiResponse({ status: 400, description: 'Validation failed or invalid date' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -55,6 +56,7 @@ export class EventsController {
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Edit event (organizer only)' })
+  @ApiBody({ type: UpdateEventDto })
   @ApiResponse({ status: 200, description: 'Event updated' })
   @ApiResponse({ status: 400, description: 'Validation failed or invalid capacity/date' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

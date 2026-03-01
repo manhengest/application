@@ -20,11 +20,16 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Event Management API')
+    .setDescription('API for managing events, registration, and participation')
     .setVersion('1.0')
+    .addServer('http://localhost:3000', 'Local development')
     .addBearerAuth()
     .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+  }
 
   await app.listen(process.env.PORT ?? 3000);
 }

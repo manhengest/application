@@ -139,9 +139,9 @@ export function EventsList() {
             to={`/events/${ev.id}`}
             className="block bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">{ev.title}</h2>
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{ev.description}</p>
-            <div className="space-y-1 text-sm text-gray-500 mb-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-3">{ev.title}</h2>
+            <p className="text-gray-600 text-sm mb-6 line-clamp-2">{ev.description}</p>
+            <div className="space-y-3 text-sm text-gray-500">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4v4M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14" />
@@ -168,48 +168,48 @@ export function EventsList() {
                 {ev.participantCount}/{ev.capacity ?? '∞'} participants
               </div>
             </div>
-            <div className="flex gap-2">
-              {ev.isFull && (
-                <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded text-sm font-medium">
+            <hr className="my-5 border-gray-200" />
+            <div className="flex flex-col gap-2">
+              {ev.isFull && !ev.isJoined && (
+                <span className="w-full text-center px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
                   Full
                 </span>
               )}
               {ev.isExpired && (
-                <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded text-sm font-medium">
+                <span className="w-full text-center px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
                   Expired
                 </span>
               )}
-              {!ev.isFull && !ev.isExpired && (
-                user ? (
+              {!ev.isExpired &&
+                (user ? (
                   ev.isJoined ? (
                     <button
                       onClick={(e) => handleLeave(e, ev.id)}
                       disabled={isPending}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isPending ? 'Leaving...' : 'Leave'}
+                      {isPending ? 'Leaving...' : 'Leave Event'}
                     </button>
-                  ) : (
+                  ) : !ev.isFull ? (
                     <button
                       onClick={(e) => handleJoin(e, ev.id)}
                       disabled={isPending}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isPending ? 'Joining...' : 'Join Event'}
                     </button>
-                  )
-                ) : (
+                  ) : null
+                ) : !ev.isFull ? (
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       navigate('/login');
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                    className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
                   >
                     Join Event
                   </button>
-                )
-              )}
+                ) : null)}
             </div>
           </Link>
           );

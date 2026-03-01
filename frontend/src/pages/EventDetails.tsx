@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { extractErrorMessage } from '../lib/utils';
@@ -15,6 +15,9 @@ export function EventDetails() {
   const [deleteModal, setDeleteModal] = useState(false);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromState = (location.state as { from?: unknown } | null)?.from;
+  const backTo = typeof fromState === 'string' ? fromState : '/events';
 
   useEffect(() => {
     if (!id) return;
@@ -80,7 +83,7 @@ export function EventDetails() {
           </div>
         )}
         <p className="text-gray-500">Event not found.</p>
-        <Link to="/events" className="text-indigo-600 hover:underline mt-2 inline-block">
+        <Link to={backTo} className="text-indigo-600 hover:underline mt-2 inline-block">
           Back to events
         </Link>
       </div>
@@ -89,7 +92,7 @@ export function EventDetails() {
 
   return (
     <div className="w-full">
-      <Link to="/events" className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1">
+      <Link to={backTo} className="text-indigo-600 hover:underline mb-4 inline-flex items-center gap-1">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -106,7 +109,7 @@ export function EventDetails() {
         <div className="space-y-2 text-gray-600 mb-6">
           <p>
             <span className="font-medium">Date & time:</span>{' '}
-            {format(new Date(event.date), 'PPp')}
+            {format(new Date(event.date), 'MMM d, yyyy HH:mm')}
           </p>
           <p>
             <span className="font-medium">Location:</span> {event.location}
@@ -127,11 +130,9 @@ export function EventDetails() {
               {event.participants.map((p) => (
                 <span
                   key={p.id}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                  title={p.name}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
                 >
-                  <span className="font-medium">{p.initials}</span>
-                  <span className="text-gray-600">{p.name}</span>
+                  {p.name}
                 </span>
               ))}
             </div>
@@ -154,8 +155,9 @@ export function EventDetails() {
               </button>
             </>
           )}
-          {!event.isOrganizer && !event.isFull && !event.isExpired && (
-            user ? (
+          {!event.isOrganizer &&
+            !event.isExpired &&
+            (user ? (
               event.isJoined ? (
                 <button
                   onClick={handleLeave}
@@ -163,23 +165,22 @@ export function EventDetails() {
                 >
                   Leave
                 </button>
-              ) : (
+              ) : !event.isFull ? (
                 <button
                   onClick={handleJoin}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                 >
                   Join Event
                 </button>
-              )
-            ) : (
+              ) : null
+            ) : !event.isFull ? (
               <button
                 onClick={() => navigate('/login')}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
               >
                 Join Event
               </button>
-            )
-          )}
+            ) : null)}
         </div>
       </div>
       <ConfirmModal

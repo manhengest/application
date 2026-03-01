@@ -90,6 +90,4 @@ docker-compose up --build
 
 ## Version Control
 
-- Branch: `develop` for implementation
-- PR into `master` when done
-- Minimum 3 commits
+- Main branch: `master`
