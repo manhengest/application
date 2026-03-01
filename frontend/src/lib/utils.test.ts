@@ -4,9 +4,7 @@ import { toLocalDatetimeInput, extractErrorMessage, isCancelError } from './util
 
 describe('isCancelError', () => {
   it('returns true for axios cancel errors', () => {
-    const source = axios.CancelToken.source();
-    source.cancel('Operation canceled');
-    const cancelError = source.token.reason;
+    const cancelError = new axios.CanceledError('Operation canceled');
     expect(isCancelError(cancelError)).toBe(true);
   });
 
@@ -42,7 +40,7 @@ describe('extractErrorMessage', () => {
   });
 
   it('returns fallback when no message', () => {
-    expect(extractErrorMessage({})).toBe('Something went wrong');
-    expect(extractErrorMessage({}, 'Custom fallback')).toBe('Custom fallback');
+    expect(extractErrorMessage(new Error(''))).toBe('Something went wrong');
+    expect(extractErrorMessage(new Error(''), 'Custom fallback')).toBe('Custom fallback');
   });
 });
