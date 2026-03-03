@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import type { Event } from '../types';
 import { format } from 'date-fns';
+import { useOptimisticParticipationList } from '../hooks/useOptimisticParticipation';
 
 export function EventsList() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -12,9 +13,16 @@ export function EventsList() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
-  const [pendingEventIds, setPendingEventIds] = useState<string[]>([]);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+
+  const { handleJoin, handleLeave, isPending } = useOptimisticParticipationList({
+    events,
+    setEvents,
+    setError: (msg) => setActionError(msg),
+    onNavigateToLogin: () => void navigate('/login'),
+    user,
+  });
 
   useEffect(() => {
     const ac = new AbortController();
@@ -35,75 +43,6 @@ export function EventsList() {
       e.title.toLowerCase().includes(search.toLowerCase()) ||
       e.description.toLowerCase().includes(search.toLowerCase()),
   );
-
-  const updateParticipation = (event: Event, isJoined: boolean): Event => {
-    if ((event.isJoined ?? false) === isJoined) {
-      return event;
-    }
-    const participantCount = Math.max(0, event.participantCount + (isJoined ? 1 : -1));
-    const isFull = event.capacity !== null ? participantCount >= event.capacity : false;
-
-    return {
-      ...event,
-      isJoined,
-      participantCount,
-      isFull,
-    };
-  };
-
-  const handleJoin = async (e: React.MouseEvent, eventId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) {
-      void navigate('/login');
-      return;
-    }
-    if (pendingEventIds.includes(eventId)) {
-      return;
-    }
-    setActionError('');
-    const previousEvent = events.find((ev) => ev.id === eventId);
-    if (!previousEvent) {
-      return;
-    }
-    setPendingEventIds((prev) => [...prev, eventId]);
-    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? updateParticipation(ev, true) : ev)));
-
-    try {
-      await api.post<Event>(`/events/${eventId}/join`);
-    } catch (err) {
-      setEvents((prev) => prev.map((ev) => (ev.id === eventId ? previousEvent : ev)));
-      setActionError(extractErrorMessage(err as AppError, 'Failed to join event'));
-    } finally {
-      setPendingEventIds((prev) => prev.filter((id) => id !== eventId));
-    }
-  };
-
-  const handleLeave = async (e: React.MouseEvent, eventId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (pendingEventIds.includes(eventId)) {
-      return;
-    }
-    setActionError('');
-    const previousEvent = events.find((ev) => ev.id === eventId);
-    if (!previousEvent) {
-      return;
-    }
-    setPendingEventIds((prev) => [...prev, eventId]);
-    setEvents((prev) =>
-      prev.map((ev) => (ev.id === eventId ? updateParticipation(ev, false) : ev)),
-    );
-
-    try {
-      await api.post<Event>(`/events/${eventId}/leave`);
-    } catch (err) {
-      setEvents((prev) => prev.map((ev) => (ev.id === eventId ? previousEvent : ev)));
-      setActionError(extractErrorMessage(err as AppError, 'Failed to leave event'));
-    } finally {
-      setPendingEventIds((prev) => prev.filter((id) => id !== eventId));
-    }
-  };
 
   if (loading) {
     return <div className="text-center py-12">Loading...</div>;
@@ -139,7 +78,7 @@ export function EventsList() {
       </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((ev) => {
-          const isPending = pendingEventIds.includes(ev.id);
+          const pending = isPending(ev.id);
           return (
             <Link
               key={ev.id}
@@ -217,18 +156,18 @@ export function EventsList() {
                     ev.isJoined ? (
                       <button
                         onClick={(e) => handleLeave(e, ev.id)}
-                        disabled={isPending}
+                        disabled={pending}
                         className="w-full px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {isPending ? 'Leaving...' : 'Leave Event'}
+                        {pending ? 'Leaving...' : 'Leave Event'}
                       </button>
                     ) : !ev.isFull ? (
                       <button
                         onClick={(e) => handleJoin(e, ev.id)}
-                        disabled={isPending}
+                        disabled={pending}
                         className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {isPending ? 'Joining...' : 'Join Event'}
+                        {pending ? 'Joining...' : 'Join Event'}
                       </button>
                     ) : null
                   ) : !ev.isFull ? (

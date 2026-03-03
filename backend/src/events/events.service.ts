@@ -156,7 +156,7 @@ export class EventsService {
   }
 
   async join(eventId: string, user: User): Promise<EventResponse> {
-    return this.eventRepo.manager.transaction(async (tx) => {
+    await this.eventRepo.manager.transaction(async (tx) => {
       // Fetch event without relations when using FOR UPDATE - PostgreSQL disallows
       // FOR UPDATE with LEFT JOIN (nullable side of outer join)
       const event = await tx.getRepository(Event).findOne({
@@ -188,12 +188,13 @@ export class EventsService {
       }
       const p = participantRepo.create({ userId: user.id, eventId });
       await participantRepo.save(p);
-      return this.findOne(eventId, user);
     });
+    // Called after the transaction commits so the new participant is visible
+    return this.findOne(eventId, user);
   }
 
   async leave(eventId: string, user: User): Promise<EventResponse> {
-    return this.eventRepo.manager.transaction(async (tx) => {
+    await this.eventRepo.manager.transaction(async (tx) => {
       await tx.getRepository(Event).findOne({
         where: { id: eventId },
         lock: { mode: 'pessimistic_write' },
@@ -205,8 +206,9 @@ export class EventsService {
         throw new BadRequestException('Not a participant');
       }
       await tx.getRepository(Participant).remove(p);
-      return this.findOne(eventId, user);
     });
+    // Called after the transaction commits so the removed participant is no longer visible
+    return this.findOne(eventId, user);
   }
 
   private tomorrowStart(): Date {
