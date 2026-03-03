@@ -23,7 +23,7 @@ export interface EventResponse {
   organizerId: string;
   organizer: { id: string; name: string; email: string } | null;
   participantCount: number;
-  participants: { id: string; name: string; initials: string }[];
+  participants: { id: string; name: string }[];
   isJoined: boolean;
   isFull: boolean;
   isOrganizer: boolean;
@@ -241,26 +241,14 @@ export class EventsService {
         email: event.organizer.email,
       },
       participantCount,
-      participants: participants.map((p) => {
-        return {
-          id: p.user.id,
-          name: p.user.name,
-          initials: this.getInitials(p.user.name),
-        };
-      }),
+      participants: participants.map((p) => ({
+        id: p.user.id,
+        name: p.user.name,
+      })),
       isJoined,
       isFull,
       isOrganizer,
       isExpired,
     };
-  }
-
-  private getInitials(name: string): string {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   }
 }

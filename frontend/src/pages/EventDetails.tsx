@@ -155,8 +155,7 @@ export function EventDetails() {
               </button>
             </>
           )}
-          {!event.isOrganizer &&
-            !event.isExpired &&
+          {!event.isExpired &&
             (user ? (
               event.isJoined ? (
                 <button
