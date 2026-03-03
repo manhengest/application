@@ -92,34 +92,9 @@ export function MyEvents() {
     };
   });
 
-  const getWeekAnchorDate = (referenceDate: Date): Date | null => {
-    if (calendarEvents.length === 0) {
-      return null;
-    }
-
-    const weekStart = startOfWeek(referenceDate);
-    const weekEnd = endOfWeek(referenceDate);
-    const hasEventInCurrentWeek = calendarEvents.some(
-      (ev) => ev.start.getTime() >= weekStart.getTime() && ev.start.getTime() <= weekEnd.getTime(),
-    );
-
-    if (hasEventInCurrentWeek) {
-      return referenceDate;
-    }
-
-    return calendarEvents.reduce((closest, current) => {
-      const closestDistance = Math.abs(closest.start.getTime() - referenceDate.getTime());
-      const currentDistance = Math.abs(current.start.getTime() - referenceDate.getTime());
-      return currentDistance < closestDistance ? current : closest;
-    }).start;
-  };
-
   const handleViewChange = (nextView: CalendarView) => {
     if (nextView === 'week') {
-      const anchorDate = getWeekAnchorDate(date);
-      if (anchorDate) {
-        setDate(anchorDate);
-      }
+      setDate(new Date());
     }
     setView(nextView);
   };
