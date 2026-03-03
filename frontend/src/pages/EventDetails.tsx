@@ -149,7 +149,7 @@ export function EventDetails() {
                   disabled={pending}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {pending ? 'Leaving...' : 'Leave'}
+                  {pending ? 'Joining...' : 'Leave'}
                 </button>
               ) : !event.isFull ? (
                 <button
@@ -157,7 +157,7 @@ export function EventDetails() {
                   disabled={pending}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {pending ? 'Joining...' : 'Join Event'}
+                  {pending ? 'Leaving...' : 'Join Event'}
                 </button>
               ) : null
             ) : !event.isFull ? (
