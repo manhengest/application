@@ -54,7 +54,8 @@ export function useOptimisticParticipationSingle({
     setEvent(applyParticipation(event, true));
 
     try {
-      await api.post<Event>(`/events/${eventId}/join`);
+      const response = await api.post<Event>(`/events/${eventId}/join`);
+      setEvent(response.data);
     } catch (err) {
       setEvent(previousEvent);
       setError(extractErrorMessage(err as AppError, 'Failed to join event'));
@@ -72,7 +73,8 @@ export function useOptimisticParticipationSingle({
     setEvent(applyParticipation(event, false));
 
     try {
-      await api.post<Event>(`/events/${eventId}/leave`);
+      const response = await api.post<Event>(`/events/${eventId}/leave`);
+      setEvent(response.data);
     } catch (err) {
       setEvent(previousEvent);
       setError(extractErrorMessage(err as AppError, 'Failed to leave event'));
