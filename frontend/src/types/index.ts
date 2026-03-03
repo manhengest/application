@@ -11,7 +11,6 @@ export interface User {
 export interface EventParticipant {
   id: string;
   name: string;
-  initials: string;
 }
 
 export interface Event {

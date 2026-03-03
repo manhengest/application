@@ -23,7 +23,7 @@ export interface EventResponse {
   organizerId: string;
   organizer: { id: string; name: string; email: string } | null;
   participantCount: number;
-  participants: { id: string; name: string; initials: string }[];
+  participants: { id: string; name: string }[];
   isJoined: boolean;
   isFull: boolean;
   isOrganizer: boolean;
@@ -156,7 +156,7 @@ export class EventsService {
   }
 
   async join(eventId: string, user: User): Promise<EventResponse> {
-    return this.eventRepo.manager.transaction(async (tx) => {
+    await this.eventRepo.manager.transaction(async (tx) => {
       // Fetch event without relations when using FOR UPDATE - PostgreSQL disallows
       // FOR UPDATE with LEFT JOIN (nullable side of outer join)
       const event = await tx.getRepository(Event).findOne({
@@ -188,12 +188,13 @@ export class EventsService {
       }
       const p = participantRepo.create({ userId: user.id, eventId });
       await participantRepo.save(p);
-      return this.findOne(eventId, user);
     });
+    // Called after the transaction commits so the new participant is visible
+    return this.findOne(eventId, user);
   }
 
   async leave(eventId: string, user: User): Promise<EventResponse> {
-    return this.eventRepo.manager.transaction(async (tx) => {
+    await this.eventRepo.manager.transaction(async (tx) => {
       await tx.getRepository(Event).findOne({
         where: { id: eventId },
         lock: { mode: 'pessimistic_write' },
@@ -205,8 +206,9 @@ export class EventsService {
         throw new BadRequestException('Not a participant');
       }
       await tx.getRepository(Participant).remove(p);
-      return this.findOne(eventId, user);
     });
+    // Called after the transaction commits so the removed participant is no longer visible
+    return this.findOne(eventId, user);
   }
 
   private tomorrowStart(): Date {
@@ -241,26 +243,14 @@ export class EventsService {
         email: event.organizer.email,
       },
       participantCount,
-      participants: participants.map((p) => {
-        return {
-          id: p.user.id,
-          name: p.user.name,
-          initials: this.getInitials(p.user.name),
-        };
-      }),
+      participants: participants.map((p) => ({
+        id: p.user.id,
+        name: p.user.name,
+      })),
       isJoined,
       isFull,
       isOrganizer,
       isExpired,
     };
-  }
-
-  private getInitials(name: string): string {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   }
 }

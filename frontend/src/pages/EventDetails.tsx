@@ -6,6 +6,7 @@ import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils'
 import type { Event, LocationState } from '../types';
 import { format } from 'date-fns';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { useOptimisticParticipationSingle } from '../hooks/useOptimisticParticipation';
 
 export function EventDetails() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,15 @@ export function EventDetails() {
   const location = useLocation();
   const { from: fromState } = (location.state ?? {}) as LocationState;
   const backTo = typeof fromState === 'string' ? fromState : '/events';
+
+  const { handleJoin, handleLeave, pending } = useOptimisticParticipationSingle({
+    event,
+    setEvent,
+    eventId: id,
+    setError,
+    onNavigateToLogin: () => void navigate('/login'),
+    user,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -34,30 +44,6 @@ export function EventDetails() {
       .finally(() => setLoading(false));
     return () => ac.abort();
   }, [id]);
-
-  const handleJoin = async () => {
-    if (!user) {
-      void navigate('/login');
-      return;
-    }
-    setError('');
-    try {
-      const { data } = await api.post<Event>(`/events/${id}/join`);
-      setEvent(data);
-    } catch (err) {
-      setError(extractErrorMessage(err as AppError, 'Failed to join event'));
-    }
-  };
-
-  const handleLeave = async () => {
-    setError('');
-    try {
-      const { data } = await api.post<Event>(`/events/${id}/leave`);
-      setEvent(data);
-    } catch (err) {
-      setError(extractErrorMessage(err as AppError, 'Failed to leave event'));
-    }
-  };
 
   const handleDelete = async () => {
     setError('');
@@ -155,22 +141,23 @@ export function EventDetails() {
               </button>
             </>
           )}
-          {!event.isOrganizer &&
-            !event.isExpired &&
+          {!event.isExpired &&
             (user ? (
               event.isJoined ? (
                 <button
                   onClick={handleLeave}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                  disabled={pending}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Leave
+                  {pending ? 'Leaving...' : 'Leave'}
                 </button>
               ) : !event.isFull ? (
                 <button
                   onClick={handleJoin}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  disabled={pending}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Join Event
+                  {pending ? 'Joining...' : 'Join Event'}
                 </button>
               ) : null
             ) : !event.isFull ? (

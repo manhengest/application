@@ -62,6 +62,19 @@ pgAdmin is included for browsing and querying the PostgreSQL database. After sta
    npm run dev
    ```
 
+### Seed the database
+
+Ensure PostgreSQL is running (e.g. `docker-compose up db -d`). Then from the project root:
+
+```bash
+cd backend
+npm run seed
+```
+
+This seeds 2 users and 3 sample events. Default credentials:
+- `eduard@example.com` / `password123`
+- `jane@example.com` / `password456`
+
 ## Environment Variables
 
 ### Backend (`backend/.env`)
