@@ -7,6 +7,8 @@ import type { Event } from '../types';
 import { format } from 'date-fns';
 import { useOptimisticParticipationList } from '../hooks/useOptimisticParticipation';
 import { EventTagChip } from '../components/EventTagChip';
+import { SearchInput } from '../components/ui/SearchInput';
+import { ErrorAlert } from '../components/ui/ErrorAlert';
 
 export function EventsList() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -77,30 +79,16 @@ export function EventsList() {
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Discover Events</h1>
       <p className="text-gray-600 mb-6">Find and join exciting events happening around you</p>
       {(error || tagError || actionError) && (
-        <div className="mb-6 bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">
-          {error || tagError || actionError}
+        <div className="mb-6">
+          <ErrorAlert message={error || tagError || actionError} />
         </div>
       )}
       <div className="space-y-4 mb-8">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Search events..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search events..."
+        />
         {tagOptions.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm font-medium text-gray-700">Filter by tag:</span>

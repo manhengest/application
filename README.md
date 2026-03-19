@@ -62,6 +62,17 @@ pgAdmin is included for browsing and querying the PostgreSQL database. After sta
    npm run dev
    ```
 
+### Storybook
+
+Run Storybook to browse and develop UI components in isolation:
+
+```bash
+cd frontend
+npm run storybook
+```
+
+Storybook runs at http://localhost:6006. It includes stories for Button, Input, Textarea, FormField, ErrorAlert, Card, SearchInput, ConfirmModal, EventTagChip, and TagSelector. If `npm install` fails due to peer dependency conflicts, use `npm install --legacy-peer-deps`.
+
 ### Seed the database
 
 Ensure PostgreSQL is running (e.g. `docker-compose up db -d`). Then from the project root:
