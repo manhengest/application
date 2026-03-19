@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import type { Event, LocationState } from '../types';
 import { format } from 'date-fns';
+import { EventTagChip } from '../components/EventTagChip';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useOptimisticParticipationSingle } from '../hooks/useOptimisticParticipation';
 
@@ -92,6 +93,13 @@ export function EventDetails() {
           <div className="mb-4 bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>
         )}
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
+        {event.tags && event.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {event.tags.map((tag) => (
+              <EventTagChip key={tag.id} tag={tag} />
+            ))}
+          </div>
+        )}
         <p className="text-gray-600 mb-6">{event.description}</p>
         <div className="space-y-2 text-gray-600 mb-6">
           <p>

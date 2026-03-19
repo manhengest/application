@@ -2,10 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsOptional,
+  IsArray,
+  ArrayMaxSize,
+  MinLength,
+  MaxLength,
   IsInt,
   Min,
   IsIn,
-  MinLength,
   IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -40,4 +43,16 @@ export class CreateEventDto {
   @ApiProperty({ enum: ['public', 'private'] })
   @IsIn(['public', 'private'])
   visibility: 'public' | 'private';
+
+  @ApiPropertyOptional({
+    example: ['Tech', 'Business'],
+    description: 'Optional tags (max 5, unique case-insensitive)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 }

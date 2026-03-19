@@ -39,7 +39,7 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  resource: { eventId: string };
+  resource: { eventId: string; firstTag?: { id: string; name: string } };
 }
 
 type CalendarView = 'month' | 'week';
@@ -52,11 +52,18 @@ const CustomEvent = ({ event }: { event: CalendarEvent }) => {
   );
 };
 
-const eventPropGetter = () => {
-  return {
-    className: 'bg-indigo-50 text-indigo-600 border-0 rounded-md p-0.5 block',
-  };
+const TAG_COLORS: Record<string, { bg: string; text: string }> = {
+  tech: { bg: 'bg-blue-100', text: 'text-blue-800' },
+  art: { bg: 'bg-purple-100', text: 'text-purple-800' },
+  business: { bg: 'bg-green-100', text: 'text-green-800' },
+  music: { bg: 'bg-amber-100', text: 'text-amber-800' },
+  networking: { bg: 'bg-teal-100', text: 'text-teal-800' },
 };
+
+function getTagStyle(tagName: string) {
+  const key = tagName.toLowerCase().trim();
+  return TAG_COLORS[key] ?? { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+}
 
 export function MyEvents() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -83,14 +90,24 @@ export function MyEvents() {
   const calendarEvents: CalendarEvent[] = events.map((e) => {
     const start = new Date(e.date);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const firstTag = e.tags?.[0];
     return {
       id: e.id,
       title: e.title,
       start,
       end,
-      resource: { eventId: e.id },
+      resource: { eventId: e.id, firstTag },
     };
   });
+
+  const eventPropGetter = (event: CalendarEvent) => {
+    const style = event.resource.firstTag
+      ? getTagStyle(event.resource.firstTag.name)
+      : { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+    return {
+      className: `${style.bg} ${style.text} border-0 rounded-md p-0.5 block`,
+    };
+  };
 
   const handleViewChange = (nextView: CalendarView) => {
     if (nextView === 'week') {
@@ -254,11 +271,15 @@ export function MyEvents() {
                       {dayEvents.length === 0 ? (
                         <span className="text-sm text-gray-500">No events</span>
                       ) : (
-                        dayEvents.map((ev) => (
+                        dayEvents.map((ev) => {
+                          const style = ev.resource.firstTag
+                            ? getTagStyle(ev.resource.firstTag.name)
+                            : { bg: 'bg-indigo-50', text: 'text-indigo-700' };
+                          return (
                           <div
                             key={ev.id}
                             onClick={() => handleSelectEvent(ev)}
-                            className="bg-indigo-50 rounded-lg p-2 text-indigo-700 cursor-pointer hover:bg-indigo-100 transition-colors"
+                            className={`${style.bg} rounded-lg p-2 ${style.text} cursor-pointer hover:opacity-90 transition-opacity`}
                           >
                             <div className="text-xs font-semibold mb-1">
                               {format(ev.start, 'HH:mm')}
@@ -270,7 +291,8 @@ export function MyEvents() {
                               {ev.title}
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>

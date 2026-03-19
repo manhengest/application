@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { User } from './entities/user.entity';
 import { Event } from './entities/event.entity';
 import { Participant } from './entities/participant.entity';
+import { Tag } from './entities/tag.entity';
 
 @Module({
   imports: [
@@ -15,12 +16,12 @@ import { Participant } from './entities/participant.entity';
           'DATABASE_URL',
           'postgresql://postgres:postgres@localhost:5432/event_management',
         ),
-        entities: [User, Event, Participant],
+        entities: [User, Event, Participant, Tag],
         synchronize: config.get('NODE_ENV') !== 'production',
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([User, Event, Participant]),
+    TypeOrmModule.forFeature([User, Event, Participant, Tag]),
   ],
   exports: [TypeOrmModule],
 })

@@ -5,12 +5,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from '../database/entities/user.entity';
 import { Event } from '../database/entities/event.entity';
 import { Participant } from '../database/entities/participant.entity';
+import { Tag } from '../database/entities/tag.entity';
+import { normalizeTagName } from '../database/utils/normalize-tag';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+
+const PG_UNIQUE_VIOLATION = '23505';
 
 export interface EventResponse {
   id: string;
@@ -24,6 +28,7 @@ export interface EventResponse {
   organizer: { id: string; name: string; email: string } | null;
   participantCount: number;
   participants: { id: string; name: string }[];
+  tags: { id: string; name: string }[];
   isJoined: boolean;
   isFull: boolean;
   isOrganizer: boolean;
@@ -37,9 +42,14 @@ export class EventsService {
     private eventRepo: Repository<Event>,
     @InjectRepository(Participant)
     private participantRepo: Repository<Participant>,
+    @InjectRepository(Tag)
+    private tagRepo: Repository<Tag>,
   ) {}
 
-  async findAll(user: User | null): Promise<EventResponse[]> {
+  async findAll(user: User | null, tagNames?: string[]): Promise<EventResponse[]> {
+    // Tags are NOT joined here to avoid a cross-product with the participants
+    // one-to-many join that causes TypeORM to silently drop the tags array.
+    // Tags are loaded in a separate query below.
     const qb = this.eventRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.organizer', 'organizer')
@@ -62,15 +72,44 @@ export class EventsService {
       );
     }
 
+    if (tagNames && tagNames.length > 0) {
+      const normalized = tagNames
+        .map((n) => normalizeTagName(n))
+        .filter(Boolean);
+      if (normalized.length > 0) {
+        qb.andWhere(
+          `EXISTS (
+            SELECT 1 FROM event_tags et
+            INNER JOIN tags t ON et.tag_id = t.id
+            WHERE et.event_id = e.id AND t.normalized_name IN (:...tagNames)
+          )`,
+          { tagNames: normalized },
+        );
+      }
+    }
+
     qb.orderBy('e.date', 'ASC');
     const events = await qb.getMany();
+
+    // Load tags for matched events in a single query and merge them in.
+    if (events.length > 0) {
+      const withTags = await this.eventRepo.find({
+        where: { id: In(events.map((e) => e.id)) },
+        relations: ['tags'],
+      });
+      const tagsById = new Map(withTags.map((e) => [e.id, e.tags ?? []]));
+      events.forEach((e) => {
+        e.tags = tagsById.get(e.id) ?? [];
+      });
+    }
+
     return events.map((e) => this.toEventResponse(e, user?.id));
   }
 
   async findOne(id: string, user: User | null): Promise<EventResponse> {
     const event = await this.eventRepo.findOne({
       where: { id },
-      relations: ['organizer', 'participants', 'participants.user'],
+      relations: ['organizer', 'participants', 'participants.user', 'tags'],
     });
     if (!event) {
       throw new NotFoundException('Event not found');
@@ -95,11 +134,12 @@ export class EventsService {
     if (date < this.tomorrowStart()) {
       throw new BadRequestException('Event date must be tomorrow or later');
     }
-    const event = this.eventRepo.create({
-      ...dto,
-      date,
-      organizerId: organizer.id,
-    });
+    const tags = await this.resolveTags(dto.tags);
+    const { tags: _tags, ...rest } = dto;
+    const event = this.eventRepo.create({ ...rest, date, organizerId: organizer.id });
+    // Assign the relation explicitly so TypeORM reliably writes the junction table
+    // rows on the first save (passing inside create() is unreliable for new entities).
+    event.tags = tags;
     await this.eventRepo.save(event);
     return this.findOne(event.id, organizer);
   }
@@ -111,7 +151,7 @@ export class EventsService {
   ): Promise<EventResponse> {
     const event = await this.eventRepo.findOne({
       where: { id },
-      relations: ['participants'],
+      relations: ['participants', 'tags'],
     });
     if (!event) {
       throw new NotFoundException('Event not found');
@@ -139,6 +179,9 @@ export class EventsService {
     if (dto.location != null) event.location = dto.location;
     if (dto.capacity != null) event.capacity = dto.capacity;
     if (dto.visibility != null) event.visibility = dto.visibility;
+    if (dto.tags !== undefined) {
+      event.tags = await this.resolveTags(dto.tags);
+    }
     await this.eventRepo.save(event);
     return this.findOne(event.id, user);
   }
@@ -218,6 +261,59 @@ export class EventsService {
     return t;
   }
 
+  private async resolveTags(names?: string[]): Promise<Tag[]> {
+    if (!names || names.length === 0) return [];
+    const seen = new Set<string>();
+    const normalizedToOriginal: Record<string, string> = {};
+    for (const n of names) {
+      const trimmed = n.trim();
+      if (!trimmed) continue;
+      const norm = normalizeTagName(trimmed);
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      normalizedToOriginal[norm] = trimmed;
+    }
+    const unique = Object.keys(normalizedToOriginal);
+    if (unique.length > 5) {
+      throw new BadRequestException('Maximum 5 tags per event');
+    }
+
+    // Batch fetch existing tags
+    const existing = await this.tagRepo.find({
+      where: { normalizedName: In(unique) },
+    });
+    const byNorm = new Map(existing.map((t) => [t.normalizedName, t]));
+    const result: Tag[] = [];
+
+    for (const norm of unique) {
+      const tag = byNorm.get(norm);
+      if (tag) {
+        result.push(tag);
+      } else {
+        result.push(await this.upsertTag(normalizedToOriginal[norm], norm));
+      }
+    }
+
+    return result;
+  }
+
+  private async upsertTag(name: string, normalizedName: string): Promise<Tag> {
+    const tag = this.tagRepo.create({ name, normalizedName });
+    try {
+      await this.tagRepo.save(tag);
+      return tag;
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === PG_UNIQUE_VIOLATION) {
+        const existing = await this.tagRepo.findOne({
+          where: { normalizedName },
+        });
+        if (existing) return existing;
+      }
+      throw err;
+    }
+  }
+
   private toEventResponse(event: Event, userId?: string): EventResponse {
     const participants = event.participants ?? [];
     const participantCount = participants.length;
@@ -227,6 +323,7 @@ export class EventsService {
     const isFull = event.capacity != null && participantCount >= event.capacity;
     const isOrganizer = event.organizerId === userId;
     const isExpired = new Date(event.date) < new Date();
+    const tags = (event.tags ?? []).map((t) => ({ id: t.id, name: t.name }));
 
     return {
       id: event.id,
@@ -237,16 +334,19 @@ export class EventsService {
       capacity: event.capacity,
       visibility: event.visibility,
       organizerId: event.organizerId,
-      organizer: {
-        id: event.organizer.id,
-        name: event.organizer.name,
-        email: event.organizer.email,
-      },
+      organizer: event.organizer
+        ? {
+            id: event.organizer.id,
+            name: event.organizer.name,
+            email: event.organizer.email,
+          }
+        : null,
       participantCount,
       participants: participants.map((p) => ({
         id: p.user.id,
         name: p.user.name,
       })),
+      tags,
       isJoined,
       isFull,
       isOrganizer,

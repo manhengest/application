@@ -3,6 +3,8 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Event } from './entities/event.entity';
 import { Participant } from './entities/participant.entity';
+import { Tag } from './entities/tag.entity';
+import { normalizeTagName } from './utils/normalize-tag';
 
 async function seed() {
   const ds = new DataSource({
@@ -10,7 +12,7 @@ async function seed() {
     url:
       process.env.DATABASE_URL ||
       'postgresql://postgres:postgres@localhost:5432/event_management',
-    entities: [User, Event, Participant],
+    entities: [User, Event, Participant, Tag],
     synchronize: true,
   });
   await ds.initialize();
@@ -18,10 +20,13 @@ async function seed() {
   const userRepo = ds.getRepository(User);
   const eventRepo = ds.getRepository(Event);
   const participantRepo = ds.getRepository(Participant);
+  const tagRepo = ds.getRepository(Tag);
 
-  // Drop all events (participants first due to FK)
+  // Drop all events (participants and event_tags first due to FK)
   await participantRepo.createQueryBuilder().delete().execute();
+  await ds.query('DELETE FROM event_tags');
   await eventRepo.createQueryBuilder().delete().execute();
+  await tagRepo.createQueryBuilder().delete().execute();
 
   let user1: User;
   let user2: User;
@@ -45,6 +50,18 @@ async function seed() {
     user2 = (await userRepo.findOne({ where: { email: 'jane@example.com' } }))!;
   }
 
+  const tagNames = ['Tech', 'Art', 'Business', 'Music', 'Networking'];
+  const tags: Tag[] = [];
+  for (const name of tagNames) {
+    const tag = tagRepo.create({
+      name,
+      normalizedName: normalizeTagName(name),
+    });
+    await tagRepo.save(tag);
+    tags.push(tag);
+  }
+  const tagByName = Object.fromEntries(tags.map((t) => [t.normalizedName, t]));
+
   const year = new Date().getFullYear();
   const event1 = eventRepo.create({
     title: 'Tech Conference 2025',
@@ -54,6 +71,7 @@ async function seed() {
     capacity: 500,
     visibility: 'public',
     organizerId: user1.id,
+    tags: [tagByName['tech'], tagByName['business']],
   });
   const event2 = eventRepo.create({
     title: 'Community Networking Meetup',
@@ -63,6 +81,7 @@ async function seed() {
     capacity: 30,
     visibility: 'public',
     organizerId: user1.id,
+    tags: [tagByName['networking'], tagByName['business']],
   });
   const event3 = eventRepo.create({
     title: 'Design Workshop',
@@ -72,10 +91,11 @@ async function seed() {
     capacity: 20,
     visibility: 'public',
     organizerId: user2.id,
+    tags: [tagByName['art'], tagByName['tech']],
   });
   await eventRepo.save([event1, event2, event3]);
 
-  console.log('Seeded 2 users and 3 events.');
+  console.log('Seeded 2 users, 5 tags, and 3 events.');
   await ds.destroy();
 }
 

@@ -3,19 +3,13 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import {
   toLocalDatetimeInput,
+  getTomorrowDateMin,
   extractErrorMessage,
   isCancelError,
   type AppError,
 } from '../lib/utils';
 import type { Event } from '../types';
-
-const tomorrow = () => {
-  const t = new Date();
-  t.setDate(t.getDate() + 1);
-  t.setHours(0, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
-};
+import { TagSelector } from '../components/TagSelector';
 
 export function EventForm() {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +22,25 @@ export function EventForm() {
   const [location, setLocation] = useState('');
   const [capacity, setCapacity] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState('');
+  const [tagError, setTagError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(isEdit);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    void api
+      .get<{ id: string; name: string }[]>('/tags', { signal: ac.signal })
+      .then((r) => setTagOptions(r.data))
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
+          setTagError(extractErrorMessage(err, 'Failed to load tags'));
+        }
+      });
+    return () => ac.abort();
+  }, []);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -48,13 +58,16 @@ export function EventForm() {
         setLocation(e.location);
         setCapacity(e.capacity != null ? String(e.capacity) : '');
         setVisibility(e.visibility);
+        setTags(e.tags?.map((t) => t.name) ?? []);
       })
       .catch((err: AppError) => {
         if (!isCancelError(err)) {
           setError(extractErrorMessage(err, 'Failed to load event'));
         }
       })
-      .finally(() => setFetchLoading(false));
+      .finally(() => {
+        if (!ac.signal.aborted) setFetchLoading(false);
+      });
     return () => ac.abort();
   }, [id, isEdit]);
 
@@ -70,6 +83,7 @@ export function EventForm() {
       location,
       capacity: capacity ? parseInt(capacity, 10) : undefined,
       visibility,
+      tags,
     };
     try {
       if (isEdit) {
@@ -109,8 +123,10 @@ export function EventForm() {
           {isEdit ? 'Update the event details.' : 'Fill in the details to create an amazing event'}
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>
+          {(error || tagError) && (
+            <div className="bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">
+              {error || tagError}
+            </div>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -148,7 +164,7 @@ export function EventForm() {
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
                 placeholder="dd.mm.yyyy"
-                min={tomorrow().slice(0, 10)}
+                min={getTomorrowDateMin()}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -195,6 +211,17 @@ export function EventForm() {
             <p className="text-xs text-gray-500 mt-1">
               Maximum number of participants. Leave empty for unlimited capacity.
             </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+            <TagSelector
+              selected={tags}
+              options={tagOptions}
+              onChange={setTags}
+              maxTags={5}
+              placeholder="e.g., Tech, Art, Business"
+              disabled={loading}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>

@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type Repository } from 'typeorm';
 import { UsersService } from './users.service';
 import { Event } from '../database/entities/event.entity';
-import { User } from '../database/entities/user.entity';
+import { type User } from '../database/entities/user.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -20,6 +20,7 @@ describe('UsersService', () => {
   };
 
   const organizerUser = { id: 'user-1', name: 'Organizer' };
+  const mockTag = { id: 'tag-1', name: 'Tech', normalizedName: 'tech' };
   const eventA = {
     id: 'event-a',
     title: 'Event A',
@@ -31,6 +32,7 @@ describe('UsersService', () => {
     capacity: null,
     visibility: 'public' as const,
     participants: [],
+    tags: [mockTag],
     createdAt: new Date(),
   };
   const eventB = {
@@ -44,6 +46,7 @@ describe('UsersService', () => {
     capacity: null,
     visibility: 'public' as const,
     participants: [],
+    tags: [],
     createdAt: new Date(),
   };
 
@@ -119,6 +122,21 @@ describe('UsersService', () => {
       const participatedEvent = result.find((e) => e.id === 'event-b');
       expect(organizedEvent?.isOrganizer).toBe(true);
       expect(participatedEvent?.isOrganizer).toBe(false);
+    });
+
+    it('should include tags in returned event summaries', async () => {
+      (eventRepo.find as jest.Mock).mockResolvedValue([eventA]);
+      (eventRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        innerJoin: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      });
+
+      const result = await service.getMyEvents(mockUser);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].tags).toEqual([{ id: 'tag-1', name: 'Tech' }]);
     });
   });
 });

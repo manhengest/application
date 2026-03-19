@@ -14,13 +14,14 @@ export class UsersService {
   async getMyEvents(user: User) {
     const asOrganizer = await this.eventRepo.find({
       where: { organizerId: user.id },
-      relations: ['organizer'],
+      relations: ['organizer', 'tags'],
       order: { date: 'ASC' },
     });
     const asParticipant = await this.eventRepo
       .createQueryBuilder('e')
       .innerJoin('e.participants', 'p', 'p.userId = :userId', { userId: user.id })
       .leftJoinAndSelect('e.organizer', 'organizer')
+      .leftJoinAndSelect('e.tags', 'tags')
       .orderBy('e.date', 'ASC')
       .getMany();
 
@@ -49,6 +50,7 @@ export class UsersService {
             name: e.organizer.name,
           }
         : null,
+      tags: (e.tags ?? []).map((t) => ({ id: t.id, name: t.name })),
       isOrganizer: e.organizerId === user.id,
     }));
   }
