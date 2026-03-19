@@ -13,6 +13,11 @@ export interface EventParticipant {
   name: string;
 }
 
+export interface EventTag {
+  id: string;
+  name: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -25,6 +30,7 @@ export interface Event {
   organizer: { id: string; name: string; email?: string } | null;
   participantCount: number;
   participants: EventParticipant[];
+  tags?: EventTag[];
   isJoined?: boolean;
   isFull?: boolean;
   isOrganizer?: boolean;

@@ -3,19 +3,19 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import {
   toLocalDatetimeInput,
+  getTomorrowDateMin,
   extractErrorMessage,
   isCancelError,
   type AppError,
 } from '../lib/utils';
 import type { Event } from '../types';
-
-const tomorrow = () => {
-  const t = new Date();
-  t.setDate(t.getDate() + 1);
-  t.setHours(0, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
-};
+import { TagSelector } from '../components/TagSelector';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Textarea } from '../components/ui/Textarea';
+import { FormField } from '../components/ui/FormField';
+import { ErrorAlert } from '../components/ui/ErrorAlert';
+import { Card } from '../components/ui/Card';
 
 export function EventForm() {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +28,25 @@ export function EventForm() {
   const [location, setLocation] = useState('');
   const [capacity, setCapacity] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState('');
+  const [tagError, setTagError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(isEdit);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    void api
+      .get<{ id: string; name: string }[]>('/tags', { signal: ac.signal })
+      .then((r) => setTagOptions(r.data))
+      .catch((err: AppError) => {
+        if (!isCancelError(err)) {
+          setTagError(extractErrorMessage(err, 'Failed to load tags'));
+        }
+      });
+    return () => ac.abort();
+  }, []);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -48,13 +64,16 @@ export function EventForm() {
         setLocation(e.location);
         setCapacity(e.capacity != null ? String(e.capacity) : '');
         setVisibility(e.visibility);
+        setTags(e.tags?.map((t) => t.name) ?? []);
       })
       .catch((err: AppError) => {
         if (!isCancelError(err)) {
           setError(extractErrorMessage(err, 'Failed to load event'));
         }
       })
-      .finally(() => setFetchLoading(false));
+      .finally(() => {
+        if (!ac.signal.aborted) setFetchLoading(false);
+      });
     return () => ac.abort();
   }, [id, isEdit]);
 
@@ -70,6 +89,7 @@ export function EventForm() {
       location,
       capacity: capacity ? parseInt(capacity, 10) : undefined,
       visibility,
+      tags,
     };
     try {
       if (isEdit) {
@@ -101,7 +121,7 @@ export function EventForm() {
         </svg>
         Back
       </Link>
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <Card>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           {isEdit ? 'Edit Event' : 'Create New Event'}
         </h1>
@@ -109,92 +129,78 @@ export function EventForm() {
           {isEdit ? 'Update the event details.' : 'Fill in the details to create an amazing event'}
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Title <span className="text-red-500">*</span>
-            </label>
-            <input
+          {(error || tagError) && <ErrorAlert message={error || tagError} />}
+          <FormField label="Event Title" required>
+            <Input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Tech Conference 2025"
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
+          </FormField>
+          <FormField label="Description" required>
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what makes your event special..."
               required
               rows={4}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
             />
-          </div>
+          </FormField>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date <span className="text-red-500">*</span>
-              </label>
-              <input
+            <FormField label="Date" required>
+              <Input
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
                 placeholder="dd.mm.yyyy"
-                min={tomorrow().slice(0, 10)}
+                min={getTomorrowDateMin()}
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time <span className="text-red-500">*</span>
-              </label>
-              <input
+            </FormField>
+            <FormField label="Time" required>
+              <Input
                 type="time"
                 value={eventTime}
                 onChange={(e) => setEventTime(e.target.value)}
                 placeholder="--:--"
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
-            </div>
+            </FormField>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location <span className="text-red-500">*</span>
-            </label>
-            <input
+          <FormField label="Location" required>
+            <Input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g., Convention Center, San Francisco"
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Capacity (optional)
-            </label>
-            <input
+          </FormField>
+          <FormField
+            label="Capacity (optional)"
+            hint="Maximum number of participants. Leave empty for unlimited capacity."
+          >
+            <Input
               type="number"
               min={1}
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
               placeholder="Leave empty for unlimited"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Maximum number of participants. Leave empty for unlimited capacity.
-            </p>
+          </FormField>
+          <div>
+            <FormField label="Tags">
+              <TagSelector
+                selected={tags}
+                options={tagOptions}
+                onChange={setTags}
+                maxTags={5}
+                placeholder="e.g., Tech, Art, Business"
+                disabled={loading}
+              />
+            </FormField>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
@@ -224,23 +230,15 @@ export function EventForm() {
             </div>
           </div>
           <div className="flex gap-4 pt-6">
-            <button
-              type="button"
-              onClick={() => void navigate(-1)}
-              className="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-            >
+            <Button variant="secondary" onClick={() => void navigate(-1)} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? 'Saving...' : isEdit ? 'Save changes' : 'Create Event'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

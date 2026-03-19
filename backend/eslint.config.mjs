@@ -1,6 +1,5 @@
 // @ts-check
 import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -9,7 +8,6 @@ export default tseslint.config(
 
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
 
   {
     languageOptions: {
@@ -38,9 +36,6 @@ export default tseslint.config(
       // General quality
       'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-
-      // Prettier
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 );

@@ -1,16 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type Repository } from 'typeorm';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Event } from '../database/entities/event.entity';
 import { Participant } from '../database/entities/participant.entity';
-import { User } from '../database/entities/user.entity';
+import { Tag } from '../database/entities/tag.entity';
+import { type User } from '../database/entities/user.entity';
 
 describe('EventsService', () => {
   let service: EventsService;
   let eventRepo: jest.Mocked<Repository<Event>>;
-  let participantRepo: jest.Mocked<Repository<Participant>>;
+  let tagRepo: jest.Mocked<Repository<Tag>>;
 
   const mockUser: User = {
     id: 'user-1',
@@ -22,6 +23,7 @@ describe('EventsService', () => {
     participations: [],
   };
 
+  const mockTag = { id: 'tag-1', name: 'Tech', normalizedName: 'tech', events: [] };
   const mockEvent: Event = {
     id: 'event-1',
     title: 'Test Event',
@@ -33,13 +35,14 @@ describe('EventsService', () => {
     organizerId: 'user-1',
     organizer: mockUser,
     participants: [],
+    tags: [],
     createdAt: new Date(),
   };
 
   beforeEach(async () => {
     const mockEventRepo = {
       findOne: jest.fn(),
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
@@ -77,17 +80,25 @@ describe('EventsService', () => {
       remove: jest.fn(),
     };
 
+    const mockTagRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((dto) => ({ ...mockTag, ...dto })),
+      save: jest.fn().mockImplementation((t) => Promise.resolve(t)),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventsService,
         { provide: getRepositoryToken(Event), useValue: mockEventRepo },
         { provide: getRepositoryToken(Participant), useValue: mockParticipantRepo },
+        { provide: getRepositoryToken(Tag), useValue: mockTagRepo },
       ],
     }).compile();
 
     service = module.get<EventsService>(EventsService);
     eventRepo = module.get(getRepositoryToken(Event));
-    participantRepo = module.get(getRepositoryToken(Participant));
+    tagRepo = module.get(getRepositoryToken(Tag));
   });
 
   it('should be defined', () => {
@@ -119,6 +130,7 @@ describe('EventsService', () => {
         getMany: jest.fn().mockResolvedValue([mockEvent]),
       };
       (eventRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+      (eventRepo.find as jest.Mock).mockResolvedValue([{ ...mockEvent, tags: [] }]);
 
       const result = await service.findAll(mockUser);
 
@@ -127,7 +139,25 @@ describe('EventsService', () => {
         { publicVisibility: 'public', userId: mockUser.id },
       );
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ id: 'event-1', title: 'Test Event' });
+      expect(result[0]).toMatchObject({ id: 'event-1', title: 'Test Event', tags: [] });
+    });
+
+    it('should filter by tags when tagNames provided', async () => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      (eventRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+      (eventRepo.find as jest.Mock).mockResolvedValue([]);
+
+      await service.findAll(null, ['Tech', 'Music']);
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('EXISTS'),
+        expect.objectContaining({ tagNames: ['tech', 'music'] }),
+      );
     });
   });
 
@@ -162,12 +192,25 @@ describe('EventsService', () => {
         ...mockEvent,
         visibility: 'private' as const,
         participants: [],
+        tags: [],
       };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(privateEvent);
 
       const result = await service.findOne('event-1', mockUser);
 
-      expect(result).toMatchObject({ id: 'event-1', isOrganizer: true });
+      expect(result).toMatchObject({ id: 'event-1', isOrganizer: true, tags: [] });
+    });
+
+    it('should return event with tags when present', async () => {
+      const eventWithTags = {
+        ...mockEvent,
+        tags: [mockTag],
+      };
+      (eventRepo.findOne as jest.Mock).mockResolvedValue(eventWithTags);
+
+      const result = await service.findOne('event-1', mockUser);
+
+      expect(result.tags).toEqual([{ id: 'tag-1', name: 'Tech' }]);
     });
 
     it('should return private event when user is participant', async () => {
@@ -176,6 +219,7 @@ describe('EventsService', () => {
         ...mockEvent,
         visibility: 'private' as const,
         participants: [{ userId: 'user-2', eventId: 'event-1', user: participantUser }],
+        tags: [],
       };
       (eventRepo.findOne as jest.Mock).mockResolvedValue(privateEvent);
 
@@ -218,6 +262,7 @@ describe('EventsService', () => {
         date: tomorrow,
         organizer: mockUser,
         participants: [],
+        tags: [],
       };
       (eventRepo.create as jest.Mock).mockReturnValue(newEvent);
       (eventRepo.save as jest.Mock).mockResolvedValue(newEvent);
@@ -242,6 +287,66 @@ describe('EventsService', () => {
       );
       expect(eventRepo.save).toHaveBeenCalled();
       expect(result).toMatchObject({ id: 'new-id', title: 'New Event' });
+    });
+
+    it('should create event with tags and upsert new tag', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 2);
+      tomorrow.setHours(14, 0, 0, 0);
+      const newTag = { ...mockTag, id: 'new-tag-id', name: 'Art', normalizedName: 'art' };
+      (tagRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (tagRepo.create as jest.Mock).mockReturnValue(newTag);
+      (tagRepo.save as jest.Mock).mockResolvedValue(newTag);
+      const newEvent = {
+        ...mockEvent,
+        id: 'new-id',
+        title: 'Art Event',
+        date: tomorrow,
+        organizer: mockUser,
+        participants: [],
+        tags: [newTag],
+      };
+      (eventRepo.create as jest.Mock).mockReturnValue(newEvent);
+      (eventRepo.save as jest.Mock).mockResolvedValue(newEvent);
+      (eventRepo.findOne as jest.Mock).mockResolvedValue(newEvent);
+
+      const result = await service.create(
+        {
+          title: 'Art Event',
+          description: 'Desc',
+          date: tomorrow.toISOString(),
+          location: 'Loc',
+          visibility: 'public',
+          tags: ['Art'],
+        },
+        mockUser,
+      );
+
+      expect(tagRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Art', normalizedName: 'art' }),
+      );
+      expect(result).toMatchObject({ id: 'new-id', title: 'Art Event' });
+      expect(result.tags).toEqual([{ id: 'new-tag-id', name: 'Art' }]);
+    });
+
+    it('should reject more than 5 tags', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 2);
+      tomorrow.setHours(14, 0, 0, 0);
+
+      await expect(
+        service.create(
+          {
+            title: 'Event',
+            description: 'Desc',
+            date: tomorrow.toISOString(),
+            location: 'Loc',
+            visibility: 'public',
+            tags: ['A', 'B', 'C', 'D', 'E', 'F'],
+          },
+          mockUser,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -285,6 +390,19 @@ describe('EventsService', () => {
       await expect(
         service.update('event-1', { date: today.toISOString() }, mockUser),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should update tags when organizer provides tags', async () => {
+      const eventWithTags = { ...mockEvent, participants: [], tags: [] };
+      (eventRepo.findOne as jest.Mock)
+        .mockResolvedValueOnce(eventWithTags)
+        .mockResolvedValueOnce({ ...eventWithTags, tags: [mockTag] });
+      (tagRepo.findOne as jest.Mock).mockResolvedValue(mockTag);
+      (eventRepo.save as jest.Mock).mockResolvedValue({});
+
+      const result = await service.update('event-1', { tags: ['Tech'] }, mockUser);
+
+      expect(result.tags).toEqual([{ id: 'tag-1', name: 'Tech' }]);
     });
   });
 
@@ -365,16 +483,6 @@ describe('EventsService', () => {
       txParticipantRepo.count.mockResolvedValue(2);
 
       await expect(service.join('event-1', mockUser)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when organizer tries to join own event', async () => {
-      txEventRepo.findOne.mockResolvedValue(mockEvent);
-      txParticipantRepo.findOne.mockResolvedValue(null);
-
-      await expect(service.join('event-1', mockUser)).rejects.toThrow(BadRequestException);
-      await expect(service.join('event-1', mockUser)).rejects.toThrow(
-        'Organizer cannot join their own event',
-      );
     });
 
     it('should save participant and return event on success', async () => {

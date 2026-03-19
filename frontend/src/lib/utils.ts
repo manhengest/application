@@ -25,6 +25,16 @@ export function toLocalDatetimeInput(iso: string): string {
 }
 
 /**
+ * Returns tomorrow's date in YYYY-MM-DD format (local timezone) for date input min attribute.
+ */
+export function getTomorrowDateMin(): string {
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  t.setHours(0, 0, 0, 0);
+  return toLocalDatetimeInput(t.toISOString()).slice(0, 10);
+}
+
+/**
  * Extracts error message from API error response.
  * Handles both string and string[] message formats from NestJS/class-validator.
  */

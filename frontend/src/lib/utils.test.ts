@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
-import { toLocalDatetimeInput, extractErrorMessage, isCancelError } from './utils';
+import {
+  toLocalDatetimeInput,
+  getTomorrowDateMin,
+  extractErrorMessage,
+  isCancelError,
+} from './utils';
 
 describe('isCancelError', () => {
   it('returns true for axios cancel errors', () => {
@@ -19,6 +24,13 @@ describe('toLocalDatetimeInput', () => {
     const iso = '2025-03-15T14:30:00.000Z';
     const result = toLocalDatetimeInput(iso);
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  });
+});
+
+describe('getTomorrowDateMin', () => {
+  it('returns YYYY-MM-DD format for date input min attribute', () => {
+    const result = getTomorrowDateMin();
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 

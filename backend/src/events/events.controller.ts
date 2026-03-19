@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,10 +15,12 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { EventsService, EventResponse } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { ListEventsQueryDto } from './dto/list-events-query.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { OptionalAuth } from '../auth/decorators/optional-auth.decorator';
 import { User } from '../database/entities/user.entity';
@@ -30,9 +33,18 @@ export class EventsController {
   @OptionalAuth()
   @Get()
   @ApiOperation({ summary: 'List events (public only when unauthenticated)' })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description: 'Filter by tag names (OR semantics)',
+    schema: { type: 'array', items: { type: 'string' }, maxItems: 10 },
+  })
   @ApiResponse({ status: 200, description: 'List of events' })
-  list(@CurrentUser() user: User | null): Promise<EventResponse[]> {
-    return this.events.findAll(user);
+  list(
+    @CurrentUser() user: User | null,
+    @Query() query: ListEventsQueryDto,
+  ): Promise<EventResponse[]> {
+    return this.events.findAll(user, query.tags);
   }
 
   @OptionalAuth()

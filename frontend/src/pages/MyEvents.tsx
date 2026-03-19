@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Event } from '../types';
+import { AssistantPanel } from '../components/AssistantPanel';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { 'en-US': enUS };
@@ -39,7 +40,7 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  resource: { eventId: string };
+  resource: { eventId: string; firstTag?: { id: string; name: string } };
 }
 
 type CalendarView = 'month' | 'week';
@@ -52,11 +53,28 @@ const CustomEvent = ({ event }: { event: CalendarEvent }) => {
   );
 };
 
-const eventPropGetter = () => {
-  return {
-    className: 'bg-indigo-50 text-indigo-600 border-0 rounded-md p-0.5 block',
-  };
+const TAG_COLORS: Record<
+  string,
+  { bg: string; text: string; bgColor: string; textColor: string }
+> = {
+  tech: { bg: 'bg-blue-100', text: 'text-blue-800', bgColor: '#dbeafe', textColor: '#1e40af' },
+  art: { bg: 'bg-purple-100', text: 'text-purple-800', bgColor: '#f3e8ff', textColor: '#581c87' },
+  business: { bg: 'bg-green-100', text: 'text-green-800', bgColor: '#dcfce7', textColor: '#166534' },
+  music: { bg: 'bg-amber-100', text: 'text-amber-800', bgColor: '#fef3c7', textColor: '#92400e' },
+  networking: { bg: 'bg-teal-100', text: 'text-teal-800', bgColor: '#ccfbf1', textColor: '#115e59' },
 };
+
+const DEFAULT_TAG_STYLE = {
+  bg: 'bg-indigo-50',
+  text: 'text-indigo-600',
+  bgColor: '#eef2ff',
+  textColor: '#4f46e5',
+};
+
+function getTagStyle(tagName: string) {
+  const key = tagName.toLowerCase().trim();
+  return TAG_COLORS[key] ?? DEFAULT_TAG_STYLE;
+}
 
 export function MyEvents() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -83,14 +101,28 @@ export function MyEvents() {
   const calendarEvents: CalendarEvent[] = events.map((e) => {
     const start = new Date(e.date);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const firstTag = e.tags?.[0];
     return {
       id: e.id,
       title: e.title,
       start,
       end,
-      resource: { eventId: e.id },
+      resource: { eventId: e.id, firstTag },
     };
   });
+
+  const eventPropGetter = (event: CalendarEvent) => {
+    const tagStyle = event.resource.firstTag
+      ? getTagStyle(event.resource.firstTag.name)
+      : DEFAULT_TAG_STYLE;
+    return {
+      className: `${tagStyle.bg} ${tagStyle.text} border-0 rounded-md p-0.5 block`,
+      style: {
+        backgroundColor: tagStyle.bgColor,
+        color: tagStyle.textColor,
+      },
+    };
+  };
 
   const handleViewChange = (nextView: CalendarView) => {
     if (nextView === 'week') {
@@ -147,6 +179,10 @@ export function MyEvents() {
         >
           + Create Event
         </Link>
+      </div>
+
+      <div className="mb-8">
+        <AssistantPanel page="my-events" />
       </div>
 
       {events.length === 0 ? (
@@ -254,11 +290,15 @@ export function MyEvents() {
                       {dayEvents.length === 0 ? (
                         <span className="text-sm text-gray-500">No events</span>
                       ) : (
-                        dayEvents.map((ev) => (
+                        dayEvents.map((ev) => {
+                          const style = ev.resource.firstTag
+                            ? getTagStyle(ev.resource.firstTag.name)
+                            : { bg: 'bg-indigo-50', text: 'text-indigo-700' };
+                          return (
                           <div
                             key={ev.id}
                             onClick={() => handleSelectEvent(ev)}
-                            className="bg-indigo-50 rounded-lg p-2 text-indigo-700 cursor-pointer hover:bg-indigo-100 transition-colors"
+                            className={`${style.bg} rounded-lg p-2 ${style.text} cursor-pointer hover:opacity-90 transition-opacity`}
                           >
                             <div className="text-xs font-semibold mb-1">
                               {format(ev.start, 'HH:mm')}
@@ -270,7 +310,8 @@ export function MyEvents() {
                               {ev.title}
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
