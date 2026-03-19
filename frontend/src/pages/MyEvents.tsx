@@ -53,17 +53,27 @@ const CustomEvent = ({ event }: { event: CalendarEvent }) => {
   );
 };
 
-const TAG_COLORS: Record<string, { bg: string; text: string }> = {
-  tech: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  art: { bg: 'bg-purple-100', text: 'text-purple-800' },
-  business: { bg: 'bg-green-100', text: 'text-green-800' },
-  music: { bg: 'bg-amber-100', text: 'text-amber-800' },
-  networking: { bg: 'bg-teal-100', text: 'text-teal-800' },
+const TAG_COLORS: Record<
+  string,
+  { bg: string; text: string; bgColor: string; textColor: string }
+> = {
+  tech: { bg: 'bg-blue-100', text: 'text-blue-800', bgColor: '#dbeafe', textColor: '#1e40af' },
+  art: { bg: 'bg-purple-100', text: 'text-purple-800', bgColor: '#f3e8ff', textColor: '#581c87' },
+  business: { bg: 'bg-green-100', text: 'text-green-800', bgColor: '#dcfce7', textColor: '#166534' },
+  music: { bg: 'bg-amber-100', text: 'text-amber-800', bgColor: '#fef3c7', textColor: '#92400e' },
+  networking: { bg: 'bg-teal-100', text: 'text-teal-800', bgColor: '#ccfbf1', textColor: '#115e59' },
+};
+
+const DEFAULT_TAG_STYLE = {
+  bg: 'bg-indigo-50',
+  text: 'text-indigo-600',
+  bgColor: '#eef2ff',
+  textColor: '#4f46e5',
 };
 
 function getTagStyle(tagName: string) {
   const key = tagName.toLowerCase().trim();
-  return TAG_COLORS[key] ?? { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+  return TAG_COLORS[key] ?? DEFAULT_TAG_STYLE;
 }
 
 export function MyEvents() {
@@ -102,11 +112,15 @@ export function MyEvents() {
   });
 
   const eventPropGetter = (event: CalendarEvent) => {
-    const style = event.resource.firstTag
+    const tagStyle = event.resource.firstTag
       ? getTagStyle(event.resource.firstTag.name)
-      : { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+      : DEFAULT_TAG_STYLE;
     return {
-      className: `${style.bg} ${style.text} border-0 rounded-md p-0.5 block`,
+      className: `${tagStyle.bg} ${tagStyle.text} border-0 rounded-md p-0.5 block`,
+      style: {
+        backgroundColor: tagStyle.bgColor,
+        color: tagStyle.textColor,
+      },
     };
   };
 
