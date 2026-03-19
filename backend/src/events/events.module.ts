@@ -10,5 +10,6 @@ import { Tag } from '../database/entities/tag.entity';
   imports: [TypeOrmModule.forFeature([Event, Participant, Tag])],
   controllers: [EventsController],
   providers: [EventsService],
+  exports: [EventsService],
 })
 export class EventsModule {}

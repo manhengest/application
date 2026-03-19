@@ -7,6 +7,7 @@ import type { Event, LocationState } from '../types';
 import { format } from 'date-fns';
 import { EventTagChip } from '../components/EventTagChip';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { AssistantPanel } from '../components/AssistantPanel';
 import { useOptimisticParticipationSingle } from '../hooks/useOptimisticParticipation';
 
 export function EventDetails() {
@@ -130,6 +131,11 @@ export function EventDetails() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+        {user && id && (
+          <div className="mt-8 mb-6">
+            <AssistantPanel page="event-details" eventId={id} />
           </div>
         )}
         <div className="flex flex-wrap gap-2">

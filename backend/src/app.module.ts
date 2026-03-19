@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { UsersModule } from './users/users.module';
 import { TagsModule } from './tags/tags.module';
+import { AssistantModule } from './assistant/assistant.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     EventsModule,
     UsersModule,
     TagsModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [

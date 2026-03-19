@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Event } from '../types';
+import { AssistantPanel } from '../components/AssistantPanel';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { 'en-US': enUS };
@@ -164,6 +165,10 @@ export function MyEvents() {
         >
           + Create Event
         </Link>
+      </div>
+
+      <div className="mb-8">
+        <AssistantPanel page="my-events" />
       </div>
 
       {events.length === 0 ? (

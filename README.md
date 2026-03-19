@@ -95,6 +95,8 @@ npm run seed   # optional: repopulate sample data
 | DATABASE_URL   | PostgreSQL connection string   | postgresql://postgres:postgres@localhost:5432/event_management |
 | JWT_SECRET     | Secret for JWT signing         | (required)                       |
 | PORT           | Server port                    | 3000                             |
+| GROQ_API_KEY   | Groq API key for AI Assistant  | (optional; omit to disable)      |
+| GROQ_MODEL     | Groq model name                | llama-3.3-70b-versatile          |
 
 ### Frontend (`frontend/.env`)
 
@@ -131,7 +133,23 @@ npm run seed   # optional: repopulate sample data
 | DELETE | /events/:id           | Delete event (organizer) |
 | POST   | /events/:id/join      | Join event (auth)        |
 | POST   | /events/:id/leave     | Leave event (auth)       |
-| GET    | /users/me/events      | User's calendar events  |
+| GET    | /users/me/events      | User's calendar events   |
+| POST   | /assistant/ask        | AI Assistant (auth)       |
+
+## AI Assistant
+
+The AI Assistant answers natural-language questions about your events using read-only access. It is available on the **My Events** page and on event detail pages when signed in.
+
+**Supported questions:**
+- Count events
+- List upcoming or past events
+- Specify a day or date range
+- Filter by tag (e.g., "show my tech events")
+- Show participants for a specific event
+
+If the question is unclear or unsupported, the assistant returns: *"Sorry, I didn't understand that. Please try rephrasing your question."*
+
+Set `GROQ_API_KEY` in `backend/.env` to enable the assistant. Without it, the assistant will respond with a configuration message. Get your key at [console.groq.com](https://console.groq.com/keys).
 
 ## Version Control
 
