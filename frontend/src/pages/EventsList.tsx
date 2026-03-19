@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
+import { useEventsStore } from '../stores/eventsStore';
 import { extractErrorMessage, isCancelError, type AppError } from '../lib/utils';
-import type { Event } from '../types';
 import { format } from 'date-fns';
 import { useOptimisticParticipationList } from '../hooks/useOptimisticParticipation';
 import { EventTagChip } from '../components/EventTagChip';
@@ -11,21 +11,25 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 
 export function EventsList() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagOptions, setTagOptions] = useState<{ id: string; name: string }[]>([]);
-  const [error, setError] = useState('');
   const [tagError, setTagError] = useState('');
-  const [actionError, setActionError] = useState('');
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+
+  const events = useEventsStore((s) => s.events);
+  const loading = useEventsStore((s) => s.loading);
+  const error = useEventsStore((s) => s.error);
+  const selectedTags = useEventsStore((s) => s.selectedTags);
+  const setSelectedTags = useEventsStore((s) => s.setSelectedTags);
+  const setEvents = useEventsStore((s) => s.setEvents);
+  const setError = useEventsStore((s) => s.setError);
+  const fetchEvents = useEventsStore((s) => s.fetchEvents);
 
   const { handleJoin, handleLeave, isPending } = useOptimisticParticipationList({
     events,
     setEvents,
-    setError: (msg) => setActionError(msg),
+    setError,
     onNavigateToLogin: () => void navigate('/login'),
     user,
   });
@@ -44,25 +48,8 @@ export function EventsList() {
   }, []);
 
   useEffect(() => {
-    const ac = new AbortController();
-    queueMicrotask(() => setLoading(true));
-    const params =
-      selectedTags.length > 0
-        ? { params: { tags: selectedTags } }
-        : {};
-    void api
-      .get<Event[]>('/events', { signal: ac.signal, ...params })
-      .then((r) => setEvents(r.data))
-      .catch((err: AppError) => {
-        if (!isCancelError(err)) {
-          setError(extractErrorMessage(err, 'Failed to load events'));
-        }
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoading(false);
-      });
-    return () => ac.abort();
-  }, [selectedTags]);
+    void fetchEvents();
+  }, [fetchEvents, selectedTags]);
 
   const filtered = events.filter(
     (e) =>
@@ -78,9 +65,9 @@ export function EventsList() {
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Discover Events</h1>
       <p className="text-gray-600 mb-6">Find and join exciting events happening around you</p>
-      {(error || tagError || actionError) && (
+      {(error || tagError) && (
         <div className="mb-6">
-          <ErrorAlert message={error || tagError || actionError} />
+          <ErrorAlert message={error || tagError} />
         </div>
       )}
       <div className="space-y-4 mb-8">
@@ -99,8 +86,10 @@ export function EventsList() {
                   key={t.id}
                   type="button"
                   onClick={() =>
-                    setSelectedTags((prev) =>
-                      isSelected ? prev.filter((x) => x !== t.name) : [...prev, t.name],
+                    setSelectedTags(
+                      isSelected
+                        ? selectedTags.filter((x) => x !== t.name)
+                        : [...selectedTags, t.name],
                     )
                   }
                   className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
