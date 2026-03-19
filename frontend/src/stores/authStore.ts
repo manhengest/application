@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
 import type { User } from '../types';
 
 interface AuthState {
@@ -10,13 +10,16 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      setAuth: (user, token) => set({ user, token }),
-      logout: () => set({ user: null, token: null }),
-    }),
-    { name: 'auth', partialize: (s) => ({ user: s.user, token: s.token }) },
+  devtools(
+    persist(
+      subscribeWithSelector((set) => ({
+        user: null,
+        token: null,
+        setAuth: (user, token) => set({ user, token }),
+        logout: () => set({ user: null, token: null }),
+      })),
+      { name: 'auth', partialize: (s) => ({ user: s.user, token: s.token }) },
+    ),
+    { name: 'AuthStore', enabled: import.meta.env.DEV },
   ),
 );

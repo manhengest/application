@@ -7,8 +7,11 @@ import { EventForm } from './pages/EventForm';
 import { MyEvents } from './pages/MyEvents';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { useAuthEffects } from './stores/useAuthEffects';
 
 export default function App() {
+  useAuthEffects();
+
   return (
     <BrowserRouter>
       <Routes>
