@@ -75,6 +75,17 @@ This seeds 2 users and 3 sample events. Default credentials:
 - `eduard@example.com` / `password123`
 - `jane@example.com` / `password456`
 
+### Troubleshooting: DB connection / "column contains null values"
+
+If the backend fails with `column "name" of relation "tags" contains null values`:
+
+```bash
+cd backend
+npm run db:reset
+npm run start:dev
+npm run seed   # optional: repopulate sample data
+```
+
 ## Environment Variables
 
 ### Backend (`backend/.env`)
